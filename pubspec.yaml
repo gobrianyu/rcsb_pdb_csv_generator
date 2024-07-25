@@ -1,0 +1,26 @@
+name: rcsb_pdb_json2csv_flex
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.4.1 <4.0.0'
+
+dependencies:
+  file_picker: ^8.0.6
+  flutter:
+    sdk: flutter
+  http: ^1.2.1
+  open_file_plus: ^3.4.1+1
+  url_launcher: ^6.3.0
+  window_manager: ^0.3.9
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
