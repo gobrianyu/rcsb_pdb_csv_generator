@@ -1,4 +1,3 @@
-// import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
@@ -33,6 +32,7 @@ class CustomQueryViewState extends State<CustomQueryView> {
   bool successful = false;
   bool open = false;
   bool process = false;
+  String filter = '';
   String query = '';
   String queryCopy = '';
   String description = '';
@@ -95,9 +95,9 @@ class CustomQueryViewState extends State<CustomQueryView> {
                               fontWeight: FontWeight.w500
                             )
                           ),
-                          Spacer(),
+                          const Spacer(),
                           _filterBar(),
-                          Spacer(),
+                          const Spacer(),
                           Stack(
                             alignment: AlignmentDirectional.topEnd,
                             children: [
@@ -383,23 +383,27 @@ class CustomQueryViewState extends State<CustomQueryView> {
         icon: const Icon(Icons.select_all, color: Colors.black),
         tooltip: 'Select all',
         onPressed: () {
-          if (selectedSubCategory != null) {
+          if (selectedSubCategory != null && filter == '') {
             for (OptionKey option in (selectedSubCategory as SubCategory).optionKeys) {
               selectedOptions.add(option);
             }
-          } else if (selectedCategory != null) {
+          } else if (selectedCategory != null && filter == '') {
             for (SubCategory subCat in (selectedCategory as Category).catKeys) {
               for (OptionKey option in subCat.optionKeys) {
                 selectedOptions.add(option);
               }
             }
-          } else {
+          } else if (filter == '') {
             for (Category cat in cats) {
               for (SubCategory subCat in cat.catKeys) {
                 for (OptionKey option in subCat.optionKeys) {
                   selectedOptions.add(option);
                 }
               }
+            }
+          } else {
+            for (OptionKey option in visibleOptions) {
+              selectedOptions.add(option);
             }
           }
           error = '';
@@ -411,18 +415,22 @@ class CustomQueryViewState extends State<CustomQueryView> {
       icon: const Icon(Icons.deselect, color: Colors.black),
       tooltip: 'Clear all',
       onPressed: () {
-        if (selectedSubCategory != null) {
+        if (selectedSubCategory != null && filter == '') {
           for (OptionKey option in (selectedSubCategory as SubCategory).optionKeys) {
             selectedOptions.remove(option);
           }
-        } else if (selectedCategory != null) {
+        } else if (selectedCategory != null && filter == '') {
           for (SubCategory subCat in (selectedCategory as Category).catKeys) {
             for (OptionKey option in subCat.optionKeys) {
               selectedOptions.remove(option);
             }
           }
-        } else {
+        } else if (filter == '') {
           selectedOptions.clear();
+        } else {
+          for (OptionKey option in visibleOptions) {
+            selectedOptions.remove(option);
+          }
         }
         error = '';
         setState(() {});
@@ -480,8 +488,8 @@ class CustomQueryViewState extends State<CustomQueryView> {
       } else {
         selectedCategory = category;
         selectedSubCategory = null;
-        visibleOptions = [];
       }
+      _onFilterUpdate();
     });
   }
 
@@ -493,15 +501,25 @@ class CustomQueryViewState extends State<CustomQueryView> {
         selectedSubCategory = subCat;
         visibleOptions = [];
       }
+      _onFilterUpdate();
     });
   }
 
   Widget _getOptions() {
     List<Widget> options = [];
-    // TODO: if (visibleOptions.isNotEmpty) {
-      
-    // } else 
-    if (selectedSubCategory != null) {
+    if (filter != '') {
+      if (visibleOptions.isEmpty) {
+        options = [Center(child: Text('No matches.', style: TextStyle(fontSize: 12)))];
+      } else {
+        options = [
+          _buildFilterOptions(Category.struct),
+          _buildFilterOptions(Category.poly),
+          _buildFilterOptions(Category.assem),
+          _buildFilterOptions(Category.nonpoly),
+          _buildFilterOptions(Category.oligo),
+        ].expand((e) => e).toList();
+      }
+    } else if (selectedSubCategory != null) {
       options.add(
         Container(
           padding: const EdgeInsets.only(left: 10, top: 2, bottom: 3),
@@ -518,7 +536,7 @@ class CustomQueryViewState extends State<CustomQueryView> {
           )
         )
       );
-      options.addAll(_buildOptionsSub(selectedSubCategory as SubCategory));
+      options.addAll(_buildSubOptions(selectedSubCategory as SubCategory));
     } else if (selectedCategory != null) {
       options = _buildOptions(selectedCategory as Category);
     } else {
@@ -572,43 +590,71 @@ class CustomQueryViewState extends State<CustomQueryView> {
     return title + favourites.map((e) => _optionSelector(e)).toList();
   }
 
-  List<Widget> _buildOptions(Category cat) {
-    List<Widget> full = [
-      Container(
-        padding: const EdgeInsets.only(left: 10, top: 2, bottom: 3),
-        width: 350,
-        decoration: BoxDecoration(
-          color: darkColor2
-        ),
-        child: Text(
-          cat.title,
-          style: TextStyle(
-            color: textColorLight,
-            fontWeight: FontWeight.w600,
-          ),
-        )
-      )
-    ];
-    return full + cat.catKeys.map((e) => _buildOptionsSub(e)).toList().expand((e) => e).toList();
+  List<Widget> _buildFilterOptions(Category cat) {
+    List<OptionKey> subs = [];
+    for (OptionKey key in visibleOptions) {
+      if (key.catTitle == cat.title) {
+        subs.add(key);
+      }
+    }
+    if (subs.isNotEmpty) {
+      return [_buildOptionsTitle(cat)] + cat.catKeys.map((e) => _buildFilterSubOptions(e)).toList().expand((e) => e).toList();
+    }
+    return [const SizedBox()];
   }
 
-  List<Widget> _buildOptionsSub(SubCategory subCat) {
-    List<Widget> full = [
-      Container(
-        padding: const EdgeInsets.only(left: 4, bottom: 2, top: 1),
-        width: 350,
-        decoration: BoxDecoration(
-          color: buttonColorLight
+  Widget _buildOptionsTitle(Category cat) {
+    return Container(
+      padding: const EdgeInsets.only(left: 10, top: 2, bottom: 3),
+      width: 350,
+      decoration: BoxDecoration(
+        color: darkColor2
+      ),
+      child: Text(
+        cat.title,
+        style: TextStyle(
+          color: textColorLight,
+          fontWeight: FontWeight.w600,
         ),
-        child: Text(
-          subCat.title,
-          style: const TextStyle(
-            fontSize: 13
-          )
+      )
+    );
+  }
+
+  List<Widget> _buildOptions(Category cat) {
+    return [_buildOptionsTitle(cat)] + cat.catKeys.map((e) => _buildSubOptions(e)).toList().expand((e) => e).toList();
+  }
+
+  List<Widget> _buildFilterSubOptions(SubCategory subCat) {
+    List<OptionKey> subs = [];
+    for (OptionKey key in visibleOptions) {
+      if (key.subCatTitle == subCat.title) {
+        subs.add(key);
+      }
+    }
+    if (subs.isNotEmpty) {
+      return [_buildSubOptionsTitle(subCat)] + subCat.optionKeys.where((e) => visibleOptions.contains(e)).map((e) => _optionSelector(e)).toList();
+    }
+    return [const SizedBox()];
+  }
+
+  Widget _buildSubOptionsTitle(SubCategory subCat) {
+    return Container(
+      padding: const EdgeInsets.only(left: 4, bottom: 2, top: 1),
+      width: 350,
+      decoration: BoxDecoration(
+        color: buttonColorLight
+      ),
+      child: Text(
+        subCat.title,
+        style: const TextStyle(
+          fontSize: 13
         )
       )
-    ];
-    return full + subCat.optionKeys.map((e) => _optionSelector(e)).toList();
+    );
+  }
+
+  List<Widget> _buildSubOptions(SubCategory subCat) {
+    return [_buildSubOptionsTitle(subCat)] + subCat.optionKeys.map((e) => _optionSelector(e)).toList();
   }
 
   Widget _optionSelector(OptionKey option) {
@@ -665,14 +711,42 @@ class CustomQueryViewState extends State<CustomQueryView> {
   }
 
   void _onFilterUpdate() {
-    String filter = filterController.text;
-    List<Category> cats = [Category.struct, Category.poly, Category.assem, Category.nonpoly, Category.oligo];
+    setState(() {
+      filter = filterController.text.trim();
+    });
     List<OptionKey> matches = [];
-    for (Category cat in cats) {
-      for (SubCategory subCat in cat.catKeys) {
+
+    if (selectedSubCategory != null) {
+      for (OptionKey opt in selectedSubCategory!.optionKeys) {
+          if (opt.catTitle.toLowerCase().contains(filter.toLowerCase()) || 
+            opt.subCatTitle.toLowerCase().contains(filter.toLowerCase()) || 
+            opt.optionTitle.toLowerCase().contains(filter.toLowerCase()) || 
+            opt.name.toLowerCase() == filter.toLowerCase()) {
+          matches.add(opt);
+        }
+      }
+    } else if (selectedCategory != null) {
+      for (SubCategory subCat in selectedCategory!.catKeys) {
         for (OptionKey opt in subCat.optionKeys) {
-          if (opt.catTitle.contains(filter) || opt.subCatTitle.contains(filter) || opt.optionTitle.contains(filter) || opt.name == filter) {
+          if (opt.catTitle.toLowerCase().contains(filter.toLowerCase()) || 
+              opt.subCatTitle.toLowerCase().contains(filter.toLowerCase()) || 
+              opt.optionTitle.toLowerCase().contains(filter.toLowerCase()) || 
+              opt.name.toLowerCase() == filter.toLowerCase()) {
             matches.add(opt);
+          }
+        }
+      }
+    } else {
+      List<Category> cats = [Category.struct, Category.poly, Category.assem, Category.nonpoly, Category.oligo];
+      for (Category cat in cats) {
+        for (SubCategory subCat in cat.catKeys) {
+          for (OptionKey opt in subCat.optionKeys) {
+            if (opt.catTitle.toLowerCase().contains(filter.toLowerCase()) || 
+                opt.subCatTitle.toLowerCase().contains(filter.toLowerCase()) || 
+                opt.optionTitle.toLowerCase().contains(filter.toLowerCase()) || 
+                opt.name.toLowerCase() == filter.toLowerCase()) {
+              matches.add(opt);
+            }
           }
         }
       }
@@ -1305,7 +1379,6 @@ class CustomQueryViewState extends State<CustomQueryView> {
         // do nothing
       } else {
         final resultSetString = resultSet.asString();
-        // TODO: format result set
         try {
           String entrySet = resultSetString.substring(1, resultSetString.length - 1);
           List<String> optionAddresses = sortedOptions.map((e) => e.address).toList();
