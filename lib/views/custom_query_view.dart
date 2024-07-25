@@ -20,41 +20,65 @@ class CustomQueryView extends StatefulWidget {
 }
 
 class CustomQueryViewState extends State<CustomQueryView> {
-  final TextEditingController searchController = TextEditingController();
-  final TextEditingController filterController = TextEditingController();
-  String? destination;
-  String fileName = '';
-  List<OptionKey> visibleOptions = [];
-  Category? selectedCategory;
-  SubCategory? selectedSubCategory;
-  List<OptionKey> selectedOptions = [];
-  bool searchLock = false;
-  bool successful = false;
+
+  // FIELDS:
+  // search controllers
+  final TextEditingController searchController = TextEditingController(); // controller for query search bar
+  final TextEditingController filterController = TextEditingController(); // controller for data type filter search bar
+  // search Strings
+  String filter = ''; // holds user entry for filterController
+  String query = ''; // holds user entry for searchController
+  String queryCopy = ''; // holds a copy of query for searchController; serves as a lock (unnecessary)
+  
+  // CSV generation fields
+  String? destination; // folder destination for generated CSV file
+  String fileName = ''; // name of generated CSV file; built on generation date and time (see _writeToCsv method below)
+
+  // CSV generation options
   bool open = false;
   bool process = false;
-  String filter = '';
-  String query = '';
-  String queryCopy = '';
-  String description = '';
-  String descriptionTitle = '';
-  String error = '';
-  List resultsFound = [];
-  late JsonWObject jsonObject;
 
-  final List<OptionKey> favourites = [OptionKey.s0o5, OptionKey.s1o1, OptionKey.s1o3, OptionKey.s2o15,  OptionKey.p2o18, OptionKey.n1o2, OptionKey.n1o6];
+  // user selected data types
+  List<OptionKey> visibleOptions = []; // used for typed filter search
+  Category? selectedCategory; // used for large categories (e.g. Structure Data, Polymer Entity Data, etc.)
+  SubCategory? selectedSubCategory; // used for sub categories (e.g. Keywords and IDs, Chemical Components, etc.)
+  List<OptionKey> selectedOptions = []; // list of selected options; used to specify API query and CSV generation
+
+  // locks
+  bool searchLock = false; // scuffed lock used to prevent user from modifying search params while querying API
+  bool successful = false; // true if successfully queried API; also used as a lock to prevent user from modifying params before CSV generation
   
-  final Color bgColor = const Color.fromARGB(255, 56, 92, 121);
-  final Color darkColor1 = const Color.fromARGB(255, 106, 106, 106);
-  final Color darkColor2 = const Color.fromARGB(255, 64, 64, 64);
-  final Color accentColorDark = const Color.fromARGB(255, 59, 91, 75);
-  final Color accentColorLight = const Color.fromARGB(255, 85, 137, 110);
-  final Color buttonColorHover = const Color.fromARGB(255, 185, 190, 205);
-  final Color buttonColorLight = const Color.fromARGB(255, 182, 186, 201);
-  final Color textColorLight = const Color.fromARGB(220, 255, 255, 255);
-  final Color containerColorLight = const Color.fromARGB(255, 250, 250, 250);
-  final Color selectionColor = const Color.fromARGB(255, 32, 107, 168);
-  final List<Category> cats = [Category.struct, Category.poly, Category.assem, Category.nonpoly, Category.oligo];
+  // console text  
+  String optionDescription = ''; // option description; displays on hover
+  String optionTitle = ''; // option name; displays on hover
+  String errorMsg = ''; // error message to display when relevant
 
+  // API results
+  List resultsFound = []; // list of result IDs from search API
+  late JsonWObject jsonObject; // converted data from data API
+
+
+  // CONSTANTS
+  // hardcoded list of favourite options
+  // TODO: change to editable through persisting data
+  final List<OptionKey> favourites = [OptionKey.s0o5, OptionKey.s1o1, OptionKey.s1o3, OptionKey.s2o15,  OptionKey.p2o18, OptionKey.n1o2, OptionKey.n1o6];
+  // list of categories
+  final List<Category> cats = [Category.struct, Category.poly, Category.assem, Category.nonpoly, Category.oligo];
+  final String delimiter = '|'; // delimiter for CSV file generation
+  // theme colours
+  final Color bgColour = const Color.fromARGB(255, 56, 92, 121); // main background colour; ~dark blue
+  final Color darkColour1 = const Color.fromARGB(255, 106, 106, 106);
+  final Color darkColour2 = const Color.fromARGB(255, 64, 64, 64);
+  final Color accentColourDark = const Color.fromARGB(255, 59, 91, 75); // darker accent colour; ~dark green
+  final Color accentColourLight = const Color.fromARGB(255, 85, 137, 110); // lighter accent colour; ~green
+  final Color buttonColourHover = const Color.fromARGB(255, 185, 190, 205);
+  final Color buttonColourLight = const Color.fromARGB(255, 182, 186, 201);
+  final Color textColourLight = const Color.fromARGB(220, 255, 255, 255);
+  final Color containerColourLight = const Color.fromARGB(255, 250, 250, 250);
+  final Color lockColour = const Color.fromARGB(155, 255, 255, 255); // lock colour (slightly translucent); ~white
+  final Color selectionColour = const Color.fromARGB(255, 32, 107, 168); // option selection (check box) colour; ~blue
+
+  // Initialises state, specifically for the two text field controllers.
   @override
   void initState() {
     super.initState();
@@ -62,94 +86,22 @@ class CustomQueryViewState extends State<CustomQueryView> {
     filterController.addListener(_onFilterUpdate);
   }
 
+  // Main build method. Root builder of this view's UI.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgColor,
-      body: Stack(
+      backgroundColor: bgColour,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Row(
+          _mainFilterPanel(),
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                height: 620,
-                width: 720,
-                padding: const EdgeInsets.all(20),
-                margin: const EdgeInsets.only(left: 50, right: 20, top: 40, bottom: 48),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.all(Radius.circular(50))
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.only(left: 15, right: 15),
-                      height: 40,
-                      child: Row(
-                        children: [
-                          const Text(
-                            'Create Custom Tabular Report',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500
-                            )
-                          ),
-                          const Spacer(),
-                          _filterBar(),
-                          const Spacer(),
-                          Stack(
-                            alignment: AlignmentDirectional.topEnd,
-                            children: [
-                              _allButton(),
-                              searchLock || successful ? Container(height: 50, width: 50, color: const Color.fromARGB(155, 255, 255, 255)) : const SizedBox()
-                            ],
-                          )
-                        ]
-                      ),
-                    ),
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFilter(),
-                            _getOptions(),
-                          ],
-                        ),
-                        searchLock || successful ? Container(height: 520, width: 670, color: const Color.fromARGB(155, 255, 255, 255)) : const SizedBox(),
-                        searchLock ? CircularProgressIndicator(color: accentColorLight, strokeWidth: 6,) : SizedBox(),
-                        successful
-                              ? Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: accentColorLight
-                                ),
-                                child: IconButton(
-                                  icon: Icon(
-                                    Icons.refresh,
-                                    size: 40,
-                                    color: textColorLight,
-                                  ),
-                                  tooltip: 'Reset',
-                                  onPressed: () => setState(() => successful = false),
-                                ),
-                              ) 
-                              : SizedBox()
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _filterLive(),
-                  _fileDestination(),
-                ],
-              ),
+              _liveFilterPanel(),
+              _fileDestination(),
             ],
           ),
         ],
@@ -157,7 +109,108 @@ class CustomQueryViewState extends State<CustomQueryView> {
     );
   }
 
-  Widget _filterLive() {
+  // Builds data type selector and filter for user to select data types
+  // to query to the API.
+  Container _mainFilterPanel() {
+    return Container( // white box background
+      height: 620,
+      width: 720,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(left: 50, right: 20, top: 40, bottom: 48),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.all(Radius.circular(50)),
+      ),
+      child: Column(
+        children: [
+          // top layer; including title, search bar, and select/clear all button
+          Container(
+            padding: const EdgeInsets.only(left: 15, right: 15),
+            height: 40,
+            child: Row(
+              children: [
+                // title
+                const Text(
+                  'Create Custom Tabular Report',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500
+                  )
+                ),
+                const Spacer(),
+                // search bar
+                _filterBar(),
+                const Spacer(),
+                // select/clear all button (with lock)
+                Stack(
+                  alignment: AlignmentDirectional.topEnd,
+                  children: [
+                    _allButton(),
+                    // button lock; active when waiting for API response or after successful API query
+                    searchLock || successful
+                          ? Container(height: 50, width: 50, color: lockColour) 
+                          : const SizedBox(),
+                  ],
+                )
+              ]
+            ),
+          ),
+          // data type categories and selectors
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildFilterButtons(),
+                  _getOptions(),
+                ],
+              ),
+              // main lock; active when waiting for API response or after successful API query
+              searchLock || successful 
+                    ? Container(height: 520, width: 670, color: lockColour) 
+                    : const SizedBox(),
+              // loading indicator; active when waiting for API response
+              searchLock 
+                    ? CircularProgressIndicator(color: accentColourLight, strokeWidth: 6,) 
+                    : const SizedBox(),
+              // reset query button; active after successful API query; 
+              // allows users to end query process and modify search params
+              successful
+                    ? _resetButton()
+                    : const SizedBox()
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Reset query button. Active after a successful API query.
+  // Allows users to end query process (turn off lock) and modify
+  // search params to begin a new query process.
+  Widget _resetButton() {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: accentColourLight
+      ),
+      child: IconButton(
+        icon: Icon(
+          Icons.refresh,
+          size: 40,
+          color: textColourLight,
+        ),
+        tooltip: 'Reset',
+        onPressed: () => setState(() => successful = false),
+      ),
+    );
+  }
+
+  // Live panel showing user selected data types, a console for status
+  // updates and errors, and the database query search bar.
+  Widget _liveFilterPanel() {
+    // white background container
     return Container(
       width: 420,
       height: 450,
@@ -170,46 +223,13 @@ class CustomQueryViewState extends State<CustomQueryView> {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Text('Selected Data Types'),
-              Stack(
-                alignment: AlignmentDirectional.topCenter,
-                children: [
-                  Container(
-                    margin: const EdgeInsets.all(10),
-                    padding: const EdgeInsets.only(bottom: 95),
-                    color: containerColorLight,
-                    height: 300,
-                    width: 370,
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        border: Border(top: BorderSide())
-                      ),
-                      height: 200,
-                      width: 370,
-                      child: selectedOptions.isEmpty 
-                      ? const Center(
-                        child: Text('Nothing to show.', style: TextStyle(fontSize: 12)),
-                      )
-                      : SingleChildScrollView(
-                        child: Column(
-                          children: selectedOptions.map((e) => _liveTile(e)).toList()
-                        )
-                      ),
-                    ),
-                  ),
-                  successful || searchLock ? Container(height: 300, width: 500, color: const Color.fromARGB(155, 255, 255, 255)) : const SizedBox()
-                ],
-              ),
-            ],
-          ),
+          // data type selection display
+          _liveSelectionDisplay(),
+          // console and search bar
           Column(
             children: [
               const SizedBox(height: 225),
-              _consoleText(),
+              _console(),
               _searchBar(),
             ],
           )
@@ -218,128 +238,82 @@ class CustomQueryViewState extends State<CustomQueryView> {
     );
   }
 
-  Widget _consoleText() {
-    return Container(
-      width: 380,
-      height: 130,
-      margin: const EdgeInsets.all(10),
-      padding: const EdgeInsets.only(left: 15, right: 15, top: 5, bottom: 5),
-      decoration: BoxDecoration(
-        color: darkColor2,
-        border: Border.all(color: darkColor1, width: 2),
-        borderRadius: const BorderRadius.all(Radius.circular(28))
-      ),
-      child: description == '' 
-            ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '--Console',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: textColorLight
-                  )
+  // Vertical list display of user's data type selection. Users can remove
+  // entries from the list or hover (mouse) over to view more information.
+  // Displays text: "Nothing to show." when no data types are selected.
+  Column _liveSelectionDisplay() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const Text('Selected Data Types'), // title
+        Stack(
+          alignment: AlignmentDirectional.topCenter,
+          children: [
+            // grey outside container
+            Container(
+              margin: const EdgeInsets.all(10),
+              padding: const EdgeInsets.only(bottom: 95),
+              color: containerColourLight,
+              height: 300,
+              width: 370,
+              // contents
+              child: Container(
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide())
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  'Data types selected: (${selectedOptions.length})',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textColorLight
-                  )
-                ),
-                selectedOptions.isEmpty 
-                      ? const Text(
-                        '► Ensure that at least 1 data type is selected before querying.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Color.fromARGB(255, 214, 195, 103)
-                        )
-                      ) 
-                      : Container(),
-                Text(
-                  'Hover on entries for more information.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textColorLight
-                  )
-                ),
-                error == ''
-                      ? Container()
-                      : Text(
-                        error,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color.fromARGB(255, 190, 84, 77)
+                height: 200,
+                width: 370,
+                child: selectedOptions.isEmpty // content depending on whether selected data types list is empty
+                      ? const Center(
+                        child: Text('Nothing to show.', style: TextStyle(fontSize: 12)), // case: no data types selected (empty list)
+                      )
+                      : SingleChildScrollView( // scrollable list of selected data types 
+                        child: Column(
+                          children: selectedOptions.map((e) => _liveTile(e)).toList()
                         )
                       ),
-                successful
-                      ? Column(
-                        children: [
-                          const SizedBox(height: 5),
-                          Text(
-                            'Found (${resultsFound.length}${resultsFound.length >= 10000 ? '+' : ''}) entries for \'$queryCopy\'.',
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w500
-                            )
-                          ),
-                        ],
-                      )
-                      : const SizedBox()
-              ],
-            )
-            : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '--Console 【$descriptionTitle】',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: textColorLight
-                  )
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  description,
-                  softWrap: true,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textColorLight
-                  )
-                ),
-              ],
-            )
+              ),
+            ),
+            // search lock; active when waiting for API response or after successful API query
+            successful || searchLock 
+                  ? Container(height: 300, width: 500, color: lockColour) 
+                  : const SizedBox()
+          ],
+        ),
+      ],
     );
   }
 
+  // Entry tile for the provided (user selected) `option` to display
+  // in the live selection display panel. Includes option title, hover
+  // handling, and a remove button.
   Widget _liveTile(OptionKey option) {
     return Column(
       children: [
         Container(
-          color: containerColorLight,
+          color: containerColourLight,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(left: 10, top: 3, bottom: 3),
-                child: MouseRegion(
+                child: MouseRegion( // hover handling
+                  // display description on enter
                   onEnter: (_) {
                     setState(() {
-                      description = option.description == '' ? '${option.optionTitle}: No description available.' : '${option.optionTitle}: ${option.description}';
-                      descriptionTitle = '${option.catTitle} | ${option.subCatTitle}';
+                      optionDescription = option.description == '' 
+                            ? '${option.optionTitle}: No description available.' 
+                            : '${option.optionTitle}: ${option.description}';
+                      optionTitle = '${option.catTitle} | ${option.subCatTitle}';
                     });
                   },
+                  // reset on exit
                   onExit: (_) {
                     setState(() {
-                      description = '';
-                      descriptionTitle = '';
+                      optionDescription = '';
+                      optionTitle = '';
                     });
                   },
                   child: SizedBox(
@@ -352,6 +326,7 @@ class CustomQueryViewState extends State<CustomQueryView> {
                   ),
                 ),
               ),
+              // remove button
               GestureDetector(
                 child: const Icon(
                   Icons.clear,
@@ -359,23 +334,161 @@ class CustomQueryViewState extends State<CustomQueryView> {
                   color: Colors.black
                 ),
                 onTap: () => setState(() {
-                  if (selectedOptions.contains(option)) {
-                    selectedOptions.remove(option);
-                  } else {
-                    selectedOptions.add(option);
-                  }
-                  error = '';
+                  selectedOptions.remove(option);
+                  errorMsg = '';
                 }),
               ),
             ]
           ),
         ),
-        const Divider(height: 0, color: Color.fromARGB(255, 230, 230, 230))
+        const Divider(height: 0, color: Color.fromARGB(255, 230, 230, 230)),
       ]
     );
   }
 
+  // Console panel within live panel. Displays errors, warnings, and status changes
+  // (e.g. results found for query). Displays data type description when user hovers
+  // on entries within live panel.
+  Widget _console() {
+    return Container(
+      width: 380,
+      height: 130,
+      margin: const EdgeInsets.all(10),
+      padding: const EdgeInsets.only(left: 15, right: 15, top: 5, bottom: 5),
+      decoration: BoxDecoration(
+        color: darkColour2,
+        border: Border.all(color: darkColour1, width: 2),
+        borderRadius: const BorderRadius.all(Radius.circular(28))
+      ),
+      child: optionDescription == '' 
+            ? _defaultConsoleText()
+            : _hoverConsoleText()
+    );
+  }
+
+  // Default console text (i.e. when the user is not hovering on an entry). Displays
+  // any errors, warnings, and status changes. Warning/error cases include:
+  // - failure to select at least 1 data type (warning; yellow; persistent)
+  // - failure to provide query (error; red; occurs when user sends empty query)
+  // - failed query (error; red; occurs when user's query fails to return in time);
+  //   either the query is too large and/or user network is too slow/is unavailable
+  // - empty result (error; red; occurs when user's query returns no results)
+  // - failure to provide destination (error; red; occurs when user fails to provide
+  //   destination for generated CSV file)
+  // - failure to generate CSV file (error; red; occurs when CSV file generation fails)
+  //
+  // Other information includes:
+  // - number of data types selected
+  // - number of entries found for user query
+  // - hover tips
+  Column _defaultConsoleText() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // title
+        Text(
+          '--Console',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: textColourLight
+          )
+        ),
+        const SizedBox(height: 5),
+        // number of data types selected
+        Text(
+          'Data types selected: (${selectedOptions.length})',
+          style: TextStyle(
+            fontSize: 12,
+            color: textColourLight
+          )
+        ),
+        // warning: failure to select at least 1 data type
+        selectedOptions.isEmpty 
+              ? const Text(
+                '► Ensure that at least 1 data type is selected before querying.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color.fromARGB(255, 214, 195, 103)
+                )
+              ) 
+              : const SizedBox(),
+        // unconditional hover tip
+        Text(
+          'Hover on entries for more information.',
+          style: TextStyle(
+            fontSize: 12,
+            color: textColourLight
+          )
+        ),
+        // error message
+        errorMsg == ''
+              ? const SizedBox()
+              : Text(
+                errorMsg,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color.fromARGB(255, 190, 84, 77)
+                )
+              ),
+        // number of entries found for user query
+        successful
+              ? Column(
+                children: [
+                  const SizedBox(height: 5),
+                  Text(
+                    'Found (${resultsFound.length}${resultsFound.length >= 10000 ? '+' : ''}) entries for \'$queryCopy\'.',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500
+                    )
+                  ),
+                ],
+              )
+              : const SizedBox()
+      ],
+    );
+  }
+
+  // Console text displayed on hover. Includes the following information
+  // for the selected entry:
+  // - category name
+  // - subcategory name
+  // - data type name
+  // - data type description (if available)
+  Column _hoverConsoleText() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '--Console 【$optionTitle】', // contains category and subcategory names
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: textColourLight
+          )
+        ),
+        const SizedBox(height: 5),
+        Text(
+          optionDescription,
+          softWrap: true,
+          style: TextStyle(
+            fontSize: 12,
+            color: textColourLight
+          )
+        ),
+      ],
+    );
+  }
+
+  // Icon button that selects or clears all. If one or more data types are already
+  // selected visible window, shows a clear all button. Otherwise, shows a select all
+  // button. Button only affects data types in the currently visible window.
   Widget _allButton() {
+    // cases for select all button
     if (selectedCategory == null && selectedSubCategory == null && selectedOptions.isEmpty
           || selectedSubCategory != null && (selectedSubCategory as SubCategory).optionKeys.where((e) => selectedOptions.contains(e)).isEmpty
           || selectedCategory != null && (selectedCategory as Category).catKeys.where((e) => e.optionKeys.where((f) => selectedOptions.contains(f)).isNotEmpty).isEmpty) {
@@ -406,11 +519,12 @@ class CustomQueryViewState extends State<CustomQueryView> {
               selectedOptions.add(option);
             }
           }
-          error = '';
+          errorMsg = '';
           setState(() {});
         }
       );
     }
+    // cases for clear all button
     return IconButton(
       icon: const Icon(Icons.deselect, color: Colors.black),
       tooltip: 'Clear all',
@@ -432,25 +546,26 @@ class CustomQueryViewState extends State<CustomQueryView> {
             selectedOptions.remove(option);
           }
         }
-        error = '';
+        errorMsg = '';
         setState(() {});
       }
     );
   }
 
-  Widget _buildFilter() {
-    List<Category> categories = [Category.struct, Category.poly, Category.assem, Category.nonpoly, Category.oligo];
+  // Builds dynamic column of filter buttons within main panel. Displays
+  // only category buttons by default, and displays dropdown-type list of
+  // subcategories upon selecting a category.
+  Widget _buildFilterButtons() {
     List<Widget> filters = [];
-
-    for (Category cat in categories) {
+    for (Category cat in cats) {
       filters.add(
         CoarseFilterButton(
           category: cat,
           onTap: filterOnTap(cat),
           selected: cat == selectedCategory,
-          color: darkColor2,
-          hoverColor: darkColor1,
-          selectColor: accentColorDark,
+          color: darkColour2,
+          hoverColor: darkColour1,
+          selectColor: accentColourDark,
         )
       );
       if (selectedCategory == cat) {
@@ -460,15 +575,14 @@ class CustomQueryViewState extends State<CustomQueryView> {
               subCat: subCat, 
               onTap: subFilterOnTap(subCat), 
               selected: subCat == selectedSubCategory,
-              color: buttonColorLight,
-              hoverColor: buttonColorHover,
-              selectColor: accentColorLight,
+              color: buttonColourLight,
+              hoverColor: buttonColourHover,
+              selectColor: accentColourLight,
             ),
           );
         }
       }
     }
-
     return Container(
       width: 290,
       padding: const EdgeInsets.all(15),
@@ -480,19 +594,23 @@ class CustomQueryViewState extends State<CustomQueryView> {
     );
   }
 
-  void Function() filterOnTap(Category category) {
+  // Filters visible data types to only be those within
+  // the provided category `cat`.
+  void Function() filterOnTap(Category cat) {
     return () => setState(() {
-      if (selectedCategory == category) {
+      if (selectedCategory == cat) {
         selectedCategory = null;
         selectedSubCategory = null;
       } else {
-        selectedCategory = category;
+        selectedCategory = cat;
         selectedSubCategory = null;
       }
       _onFilterUpdate();
     });
   }
 
+  // Filters visible data types to only be those within
+  // the provided subcategory `subCat`.
   void Function() subFilterOnTap(SubCategory subCat) {
     return () => setState(() {
       if (selectedSubCategory == subCat) {
@@ -505,12 +623,19 @@ class CustomQueryViewState extends State<CustomQueryView> {
     });
   }
 
+  // Filters data types list in main panel based on user selected subcategory and category,
+  // and on user inputted search bar.
   Widget _getOptions() {
-    List<Widget> options = [];
-    if (filter != '') {
-      if (visibleOptions.isEmpty) {
-        options = [Center(child: Text('No matches.', style: TextStyle(fontSize: 12)))];
-      } else {
+    List<Widget> options = []; // list of data type selectors to return
+    if (filter != '') { // case where search bar has input
+      if (visibleOptions.isEmpty) { // case where no data types match user's search bar input
+        options = [const Center(
+          child: Text(
+            'No matches.',
+            style: TextStyle(fontSize: 12)
+          )
+        )];
+      } else { // case where data type matches are found for user's search bar input
         options = [
           _buildFilterOptions(Category.struct),
           _buildFilterOptions(Category.poly),
@@ -519,27 +644,27 @@ class CustomQueryViewState extends State<CustomQueryView> {
           _buildFilterOptions(Category.oligo),
         ].expand((e) => e).toList();
       }
-    } else if (selectedSubCategory != null) {
+    } else if (selectedSubCategory != null) { // case where user selected a subcategory
       options.add(
         Container(
           padding: const EdgeInsets.only(left: 10, top: 2, bottom: 3),
           width: 350,
           decoration: BoxDecoration(
-            color: darkColor2
+            color: darkColour2
           ),
           child: Text(
             (selectedSubCategory as SubCategory).superCat,
             style: TextStyle(
-              color: textColorLight,
+              color: textColourLight,
               fontWeight: FontWeight.w600,
             ),
           )
         )
       );
       options.addAll(_buildSubOptions(selectedSubCategory as SubCategory));
-    } else if (selectedCategory != null) {
+    } else if (selectedCategory != null) { // case where user selected a category
       options = _buildOptions(selectedCategory as Category);
-    } else {
+    } else { // default case
       options = [
         _buildFavs(),
         _buildOptions(Category.struct),
@@ -549,6 +674,7 @@ class CustomQueryViewState extends State<CustomQueryView> {
         _buildOptions(Category.oligo),
       ].expand((e) => e).toList();
     }
+    // returning scrolling widget of options
     return Container(
       height: 524,
       width: 390,
@@ -563,6 +689,7 @@ class CustomQueryViewState extends State<CustomQueryView> {
     );
   }
 
+  // List of favourite data types to display in default view.
   List<Widget> _buildFavs() {
     favourites.sort((a, b) => a.key.compareTo(b.key));
     List<Widget> title = [
@@ -570,16 +697,16 @@ class CustomQueryViewState extends State<CustomQueryView> {
         padding: const EdgeInsets.only(left: 10, top: 2, bottom: 3),
         width: 350,
         decoration: BoxDecoration(
-          color: accentColorDark
+          color: accentColourDark
         ),
         child: Row(
           children: [
-            Icon(Icons.star_rounded, color: textColorLight, size: 18),
+            Icon(Icons.star_rounded, color: textColourLight, size: 18),
             const SizedBox(width: 5),
             Text(
               'Favourites',
               style: TextStyle(
-                color: textColorLight,
+                color: textColourLight,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -590,6 +717,13 @@ class CustomQueryViewState extends State<CustomQueryView> {
     return title + favourites.map((e) => _optionSelector(e)).toList();
   }
 
+  // Builds data type selectors from provided category `cat`.
+  List<Widget> _buildOptions(Category cat) {
+    return [_buildOptionsTitle(cat)] + cat.catKeys.map((e) => _buildSubOptions(e)).toList().expand((e) => e).toList();
+  }
+
+  // Builds data type selectors from provided category `cat` and
+  // search bar input.
   List<Widget> _buildFilterOptions(Category cat) {
     List<OptionKey> subs = [];
     for (OptionKey key in visibleOptions) {
@@ -603,27 +737,31 @@ class CustomQueryViewState extends State<CustomQueryView> {
     return [const SizedBox()];
   }
 
+  // Builds data type selector title from provided category `cat`.
   Widget _buildOptionsTitle(Category cat) {
     return Container(
       padding: const EdgeInsets.only(left: 10, top: 2, bottom: 3),
       width: 350,
       decoration: BoxDecoration(
-        color: darkColor2
+        color: darkColour2
       ),
       child: Text(
         cat.title,
         style: TextStyle(
-          color: textColorLight,
+          color: textColourLight,
           fontWeight: FontWeight.w600,
         ),
       )
     );
   }
 
-  List<Widget> _buildOptions(Category cat) {
-    return [_buildOptionsTitle(cat)] + cat.catKeys.map((e) => _buildSubOptions(e)).toList().expand((e) => e).toList();
+  // Builds data type selectors from provided subcategory `subCat`.
+  List<Widget> _buildSubOptions(SubCategory subCat) {
+    return [_buildSubOptionsTitle(subCat)] + subCat.optionKeys.map((e) => _optionSelector(e)).toList();
   }
 
+  // Builds data type selectors from provided subcategory `subCat`
+  // and search bar input.
   List<Widget> _buildFilterSubOptions(SubCategory subCat) {
     List<OptionKey> subs = [];
     for (OptionKey key in visibleOptions) {
@@ -637,12 +775,13 @@ class CustomQueryViewState extends State<CustomQueryView> {
     return [const SizedBox()];
   }
 
+  // Builds data type selector title from provided subcategory `subCat`.
   Widget _buildSubOptionsTitle(SubCategory subCat) {
     return Container(
       padding: const EdgeInsets.only(left: 4, bottom: 2, top: 1),
       width: 350,
       decoration: BoxDecoration(
-        color: buttonColorLight
+        color: buttonColourLight
       ),
       child: Text(
         subCat.title,
@@ -653,10 +792,8 @@ class CustomQueryViewState extends State<CustomQueryView> {
     );
   }
 
-  List<Widget> _buildSubOptions(SubCategory subCat) {
-    return [_buildSubOptionsTitle(subCat)] + subCat.optionKeys.map((e) => _optionSelector(e)).toList();
-  }
-
+  // Builds selector widget for the main panel 
+  // from the provided data type `option`.
   Widget _optionSelector(OptionKey option) {
     return SizedBox(
       width: 350,
@@ -664,7 +801,8 @@ class CustomQueryViewState extends State<CustomQueryView> {
         children: [
           const Divider(height: 0),
           Container(
-            color: containerColorLight,
+            color: containerColourLight,
+            // on-tap handling
             child: GestureDetector(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -672,13 +810,13 @@ class CustomQueryViewState extends State<CustomQueryView> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(left: 2, bottom: 3, top: 3, right: 4),
-                    child: Icon(
+                    child: Icon( // dynamic check-box icon
                       selectedOptions.contains(option) 
                             ? Icons.check_box 
                             : Icons.check_box_outline_blank,
                       size: 15,
                       color: selectedOptions.contains(option)
-                            ? selectionColor
+                            ? selectionColour
                             : Colors.black
                     ),
                   ),
@@ -701,7 +839,7 @@ class CustomQueryViewState extends State<CustomQueryView> {
                 } else {
                   selectedOptions.add(option);
                 }
-                error = '';
+                errorMsg = '';
               }),
             ),
           ),
@@ -710,50 +848,7 @@ class CustomQueryViewState extends State<CustomQueryView> {
     );
   }
 
-  void _onFilterUpdate() {
-    setState(() {
-      filter = filterController.text.trim();
-    });
-    List<OptionKey> matches = [];
-
-    if (selectedSubCategory != null) {
-      for (OptionKey opt in selectedSubCategory!.optionKeys) {
-          if (opt.catTitle.toLowerCase().contains(filter.toLowerCase()) || 
-            opt.subCatTitle.toLowerCase().contains(filter.toLowerCase()) || 
-            opt.optionTitle.toLowerCase().contains(filter.toLowerCase()) || 
-            opt.name.toLowerCase() == filter.toLowerCase()) {
-          matches.add(opt);
-        }
-      }
-    } else if (selectedCategory != null) {
-      for (SubCategory subCat in selectedCategory!.catKeys) {
-        for (OptionKey opt in subCat.optionKeys) {
-          if (opt.catTitle.toLowerCase().contains(filter.toLowerCase()) || 
-              opt.subCatTitle.toLowerCase().contains(filter.toLowerCase()) || 
-              opt.optionTitle.toLowerCase().contains(filter.toLowerCase()) || 
-              opt.name.toLowerCase() == filter.toLowerCase()) {
-            matches.add(opt);
-          }
-        }
-      }
-    } else {
-      List<Category> cats = [Category.struct, Category.poly, Category.assem, Category.nonpoly, Category.oligo];
-      for (Category cat in cats) {
-        for (SubCategory subCat in cat.catKeys) {
-          for (OptionKey opt in subCat.optionKeys) {
-            if (opt.catTitle.toLowerCase().contains(filter.toLowerCase()) || 
-                opt.subCatTitle.toLowerCase().contains(filter.toLowerCase()) || 
-                opt.optionTitle.toLowerCase().contains(filter.toLowerCase()) || 
-                opt.name.toLowerCase() == filter.toLowerCase()) {
-              matches.add(opt);
-            }
-          }
-        }
-      }
-    }
-    setState(() => visibleOptions = matches);
-  }
-
+  // Search bar for the main panel's data type filtering.
   Widget _filterBar() {
     return Container(
       margin: const EdgeInsets.only(top: 5, bottom: 5),
@@ -770,25 +865,23 @@ class CustomQueryViewState extends State<CustomQueryView> {
           SizedBox(
             width: 288,
             child: TextField(
-              enabled: !searchLock && !successful,
+              enabled: !searchLock && !successful, // locks during API search and after successful query
               controller: filterController,
               cursorColor: Colors.black,
               cursorWidth: 1,
               style: const TextStyle(
                 fontSize: 14,
               ),
+              // context menu (i.e. cut, copy, paste, select all options)
               contextMenuBuilder: (BuildContext context, EditableTextState editableTextState) {
                 return AdaptiveTextSelectionToolbar(
                   anchors: editableTextState.contextMenuAnchors,
-                  // Build the default buttons, but make them look custom.
-                  // In a real project you may want to build different
-                  // buttons depending on the platform.
                   children: editableTextState.contextMenuButtonItems
                       .map((ContextMenuButtonItem buttonItem) {
                     return CupertinoButton(
                       minSize: 25,
                       borderRadius: null,
-                      color: containerColorLight,
+                      color: containerColourLight,
                       onPressed: buttonItem.onPressed,
                       padding: const EdgeInsets.only(left: 10.0),
                       pressedOpacity: 0.7,
@@ -826,12 +919,51 @@ class CustomQueryViewState extends State<CustomQueryView> {
     );
   }
 
-  void _onSearchUpdate() {
-    query = searchController.text;
-    error = '';
-    setState(() {});
+  // Method called on updates to the filter search bar. Updates what data
+  // type selectors to show on the main panel.
+  void _onFilterUpdate() {
+    setState(() {
+      filter = filterController.text.trim();
+    });
+    List<OptionKey> matches = [];
+    if (selectedSubCategory != null) {
+      for (OptionKey opt in selectedSubCategory!.optionKeys) {
+          if (opt.catTitle.toLowerCase().contains(filter.toLowerCase()) || 
+            opt.subCatTitle.toLowerCase().contains(filter.toLowerCase()) || 
+            opt.optionTitle.toLowerCase().contains(filter.toLowerCase()) || 
+            opt.name.toLowerCase() == filter.toLowerCase()) {
+          matches.add(opt);
+        }
+      }
+    } else if (selectedCategory != null) {
+      for (SubCategory subCat in selectedCategory!.catKeys) {
+        for (OptionKey opt in subCat.optionKeys) {
+          if (opt.catTitle.toLowerCase().contains(filter.toLowerCase()) || 
+              opt.subCatTitle.toLowerCase().contains(filter.toLowerCase()) || 
+              opt.optionTitle.toLowerCase().contains(filter.toLowerCase()) || 
+              opt.name.toLowerCase() == filter.toLowerCase()) {
+            matches.add(opt);
+          }
+        }
+      }
+    } else {
+      for (Category cat in cats) {
+        for (SubCategory subCat in cat.catKeys) {
+          for (OptionKey opt in subCat.optionKeys) {
+            if (opt.catTitle.toLowerCase().contains(filter.toLowerCase()) || 
+                opt.subCatTitle.toLowerCase().contains(filter.toLowerCase()) || 
+                opt.optionTitle.toLowerCase().contains(filter.toLowerCase()) || 
+                opt.name.toLowerCase() == filter.toLowerCase()) {
+              matches.add(opt);
+            }
+          }
+        }
+      }
+    }
+    setState(() => visibleOptions = matches);
   }
 
+  // Search bar to send query to RCSB PDB's API.
   Widget _searchBar() {
     return Container(
       margin: const EdgeInsets.only(top: 10, bottom: 10),
@@ -848,26 +980,26 @@ class CustomQueryViewState extends State<CustomQueryView> {
           SizedBox(
             width: 338,
             child: TextField(
-              enabled: !searchLock && !successful,
+              enabled: !searchLock && !successful, // locks during API search and after successful query
               controller: searchController,
               cursorColor: Colors.black,
               cursorWidth: 1,
               style: const TextStyle(
                 fontSize: 14,
               ),
-              onSubmitted: (_) => searchLock ? null : _queryApi(),
+              onSubmitted: (_) => searchLock // locked when another query is being processed
+                    ? null
+                    : _queryApi(), // calls _queryAPI method when user presses enter
+              // context menu (i.e. cut, copy, paste, select all options)
               contextMenuBuilder: (BuildContext context, EditableTextState editableTextState) {
                 return AdaptiveTextSelectionToolbar(
                   anchors: editableTextState.contextMenuAnchors,
-                  // Build the default buttons, but make them look custom.
-                  // In a real project you may want to build different
-                  // buttons depending on the platform.
                   children: editableTextState.contextMenuButtonItems
                       .map((ContextMenuButtonItem buttonItem) {
                     return CupertinoButton(
                       minSize: 25,
                       borderRadius: null,
-                      color: containerColorLight,
+                      color: containerColourLight,
                       onPressed: buttonItem.onPressed,
                       padding: const EdgeInsets.only(left: 10.0),
                       pressedOpacity: 0.7,
@@ -899,13 +1031,13 @@ class CustomQueryViewState extends State<CustomQueryView> {
                 suffixIcon: Container(
                   decoration: BoxDecoration(
                     borderRadius: const BorderRadius.all(Radius.circular(20)),
-                    color: accentColorLight
+                    color: accentColourLight
                   ),
-                  child: IconButton( // search field search button.
+                  child: IconButton( // search field search button; icon changes depending on search state
                     icon: Icon(searchLock ? Icons.downloading : successful ? Icons.download_done : Icons.search, size: 20, color: Colors.white),
                     tooltip: successful ? 'Search Again' : 'Search',
                     padding: const EdgeInsets.all(0),
-                    onPressed: () => searchLock ? null : _queryApi(), // querying db api
+                    onPressed: () => searchLock ? null : _queryApi(), // querying PDB API
                   ),
                 ),
               ),
@@ -916,105 +1048,14 @@ class CustomQueryViewState extends State<CustomQueryView> {
     );
   }
 
-  Widget _generateButton() {
-    return Padding(
-      padding: const EdgeInsets.only(right: 7),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15.0)),
-          fixedSize: const Size(150, 30),
-          backgroundColor: buttonColorLight,
-          shadowColor: Colors.black
-        ),
-        onPressed: () async {
-          if (open) {
-            await _writeToCsv();
-            _openFile();
-          }
-          _writeToCsv();
-        },
-        child: const Text('Generate CSV', style: TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w400)),
-      ),
-    );
+  // Method called on user input changes to the search bar.
+  void _onSearchUpdate() {
+    query = searchController.text;
+    errorMsg = '';
+    setState(() {});
   }
 
-  Widget _generateOptions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: () {
-            setState(() => open = !open);
-          },
-          child: Row(
-            children: [
-              Icon(
-                open ? Icons.check_box : Icons.check_box_outline_blank,
-                size: 20
-              ),
-              SizedBox(width: 3),
-              Text(
-                'Open generated file',
-                style: TextStyle(
-                  fontSize: 13
-                )
-              ),
-            ],
-          ),
-        ),
-        GestureDetector(
-          onTap: () {
-            setState(() => process = !process);
-          },
-          child: Row(
-            children: [
-              Icon(
-                process ? Icons.check_box : Icons.check_box_outline_blank,
-                size: 20
-              ),
-              SizedBox(width: 3),
-              Text(
-                'Process file',
-                style: TextStyle(
-                  fontSize: 13
-                )
-              ),
-            ],
-          ),
-        )
-      ]
-    );
-  }
-
-  Widget _generateAndOpenButton() {
-    return Padding(
-      padding: const EdgeInsets.only(right: 7),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15.0)),
-          fixedSize: const Size(180, 30),
-          backgroundColor: const Color.fromARGB(255, 182, 186, 201),
-          shadowColor: Colors.black
-        ),
-        onPressed: () async {
-          await _writeToCsv();
-           _openFile();
-        },
-        child: const Text('Generate and Open', style: TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w400)),
-      ),
-    );
-  }
-
-  Future<void> _openFile() async {
-    try {
-      await OpenFile.open('$destination\\$fileName');
-    } on Exception catch (_) {
-      return;
-    }
-  }
-
+  // File destination selector.
   Widget _fileDestination() {
     return Container(
       width: 420,
@@ -1060,7 +1101,7 @@ class CustomQueryViewState extends State<CustomQueryView> {
                       child: GestureDetector(
                         onTap:() => setState(() {
                           destination = null;
-                          error = '';
+                          errorMsg = '';
                         }),
                         child: const Icon(Icons.clear, size: 20),
                       ),
@@ -1069,12 +1110,13 @@ class CustomQueryViewState extends State<CustomQueryView> {
                 )
               ),
               const SizedBox(width: 7),
+              // browse folder icon button
               Transform.scale(
                 scale: 0.8,
                 child: Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: buttonColorLight
+                    color: buttonColourLight
                   ),
                   child: IconButton(
                     icon: const Icon(
@@ -1089,6 +1131,7 @@ class CustomQueryViewState extends State<CustomQueryView> {
             ],
           ),
           const SizedBox(height: 10),
+          // generate button and options; lockable
           Stack(
             children: [
               Row(
@@ -1100,7 +1143,7 @@ class CustomQueryViewState extends State<CustomQueryView> {
                 ],
               ),
               successful ? Container() : Container(
-                color: const Color.fromARGB(155, 255, 255, 255),
+                color: lockColour,
                 width: 370,
                 height: 50,
               ),
@@ -1111,8 +1154,96 @@ class CustomQueryViewState extends State<CustomQueryView> {
     );
   }
 
+  // Calls method to generate a CSV from downloaded data.
+  // Locked in higher widget when no data is available.
+  Widget _generateButton() {
+    return Padding(
+      padding: const EdgeInsets.only(right: 7),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15.0)),
+          fixedSize: const Size(150, 30),
+          backgroundColor: buttonColourLight,
+          shadowColor: Colors.black
+        ),
+        onPressed: () async {
+          if (open) {
+            await _writeToCsv();
+            _openFile();
+          }
+          _writeToCsv();
+        },
+        child: const Text('Generate CSV', style: TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w400)),
+      ),
+    );
+  }
+
+  // CSV generation options, including:
+  // - opening the CSV file upon successful generation
+  // - processing CSV file formatting to be more compact
+  Widget _generateOptions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // open option
+        GestureDetector(
+          onTap: () {
+            setState(() => open = !open);
+          },
+          child: Row(
+            children: [
+              Icon(
+                open ? Icons.check_box : Icons.check_box_outline_blank,
+                size: 20
+              ),
+              const SizedBox(width: 3),
+              const Text(
+                'Open generated file',
+                style: TextStyle(
+                  fontSize: 13
+                )
+              ),
+            ],
+          ),
+        ),
+        // process option
+        GestureDetector(
+          onTap: () {
+            setState(() => process = !process);
+          },
+          child: Row(
+            children: [
+              Icon(
+                process ? Icons.check_box : Icons.check_box_outline_blank,
+                size: 20
+              ),
+              const SizedBox(width: 3),
+              const Text(
+                'Process file',
+                style: TextStyle(
+                  fontSize: 13
+                )
+              ),
+            ],
+          ),
+        )
+      ]
+    );
+  }
+
+  // Opens file from current destination.
+  Future<void> _openFile() async {
+    try {
+      await OpenFile.open('$destination\\$fileName');
+    } on Exception catch (_) {
+      return;
+    }
+  }
+
+  // Opens file explorer (Windows)
   void _openFolderExplorer() async {
-    error = '';
+    errorMsg = '';
     setState(() {});
     try {
       final newDestination = await FilePicker.platform.getDirectoryPath();
@@ -1123,6 +1254,106 @@ class CustomQueryViewState extends State<CustomQueryView> {
     } catch (_) {}
   }
 
+  // Writes to a CSV file from current JSON object with user selected file destination.
+  // Generated file name is in the format 'rcsb_pdb_custom_report_YYYYMMDDhhmmss'.
+  Future<void> _writeToCsv() async {
+    if (destination == null) {
+      errorMsg = '► No destination directory selected.';
+      setState(() {});
+      return;
+    }
+    final DateTime now = DateTime.now();
+    // naming CSV file
+    setState(() => fileName = 'rcsb_pdb_custom_report_${now.year}${now.month}${now.day}${now.hour}${now.minute}${now.second}.csv');
+    final IOSink sink = File('$destination\\$fileName').openWrite(encoding: utf8); // creates CSV file and opens sink
+    
+    sink.done.ignore();
+
+    sink.write('sep=$delimiter\n'); // setting delimiter symbol to be final constant `delimiter`
+    if (!process) {
+      await _writeHeader(sink); // writing headers
+    }
+    await _writeCats(sink); // writing categories
+
+    if (process) { // extra processing options
+      sink.write('${delimiter}PDB Web Linker${delimiter}Download PDB File');
+      if (selectedOptions.contains(OptionKey.s0o5)) {
+        sink.write('${delimiter}DOI Linker${delimiter}Literature');
+      }
+      if (selectedOptions.contains(OptionKey.p2o18)) {
+        sink.write('${delimiter}Target');
+      }
+    }
+    sink.write('\n');
+
+    for (int i = 0; i < resultsFound.length; i++) {
+      sink.write('${resultsFound[i]}');
+      if (process) { // case where processing is required
+        for (OptionKey option in selectedOptions) {
+          sink.write('$delimiter${option.contentP(jsonObject.all[i]) ?? ''}'.replaceAll('\n', '\\n'));
+        }
+        sink.write('$delimiter${resultsFound[i]}$delimiter${resultsFound[i]}.pdb');
+        if (selectedOptions.contains(OptionKey.s0o5)) {
+          String? doi = OptionKey.s0o5.contentP(jsonObject.all[i])?.replaceAll('\n', '\\n');
+          if (doi != null) {
+            sink.write('$delimiter$doi$delimiter${doi.split('/').last}.pdf');
+          } else {
+            sink.write('$delimiter$delimiter');
+          }
+        }
+        if (selectedOptions.contains(OptionKey.p2o18)) {
+          sink.write('$delimiter${_getTarget(OptionKey.p2o18.contentP(jsonObject.all[i]))}'.replaceAll('\n', '\\n'));
+        }
+        sink.write('\n');
+      } else { // case where processing option not selected
+        int maxLength = 0; // maximum rows required for this entry
+        for (OptionKey option in selectedOptions) {
+          if (option.needSpan()) {
+            List? list = option.contentW(jsonObject.all[i]);
+            if (list == null) {
+              sink.write(delimiter);
+            } else {
+              if (list.length > maxLength) {
+                maxLength = list.length; // update maximum rows when relevant on first pass
+              }
+              sink.write('$delimiter${list[0]}'.replaceAll('\n', '\\n'));
+            }
+          } else {
+            sink.write('$delimiter${option.contentW(jsonObject.all[i]) ?? ''}'.replaceAll('\n', '\\n'));
+          }
+        }
+        sink.write('\n');
+        // writing additional rows
+        for (int j = 1; j < maxLength; j++) {
+          for (OptionKey option in selectedOptions) {
+            if (option.needSpan()) {
+              List? list = option.contentW(jsonObject.all[i]);
+              if (list == null || list.length <= j) {
+                sink.write(delimiter);
+              } else {
+                sink.write('$delimiter${list[j]}'.replaceAll('\n', '\\n'));
+              }
+            } else {
+              sink.write(delimiter);
+            }
+          }
+          sink.write('\n');
+        }
+      }
+    }
+
+    try {
+      await sink.flush();
+      await sink.close();
+    } on FileSystemException catch (e) {
+      errorMsg = 'Error: Unable to write a new CSV file: $e'; // CSV generation fail state
+      setState(() {});
+      return;
+    }
+  }
+
+  // Writes headers to the provided `sink` based 
+  // on user selected data types.
   Future<void> _writeHeader(IOSink sink) async {
     int numSD = 0;
     int numPED = 0;
@@ -1149,126 +1380,28 @@ class CustomQueryViewState extends State<CustomQueryView> {
     sink.write('\n');
   }
 
+  // Helper method; writes header and spacers to the provided
+  // `sink` for the provided header `title` and `spacerCount`.
   Future<void> _writeHeaderHelper(IOSink sink, String title, int spacerCount) async {
     if (spacerCount != 0) {
-      sink.write('|$title');
+      sink.write('$delimiter$title');
       for (int i = 1; i < spacerCount; i++) {
-        sink.write('|');
+        sink.write(delimiter);
       }
     }
   }
 
+  // Writes categories to the provided `sink` based
+  // on user selected data types.
   Future<void> _writeCats(IOSink sink) async {
     sink.write('Entry ID');
     selectedOptions.sort((a, b) => a.key.compareTo(b.key));
     for (OptionKey key in selectedOptions) {
-      sink.write('|${key.optionTitle}');
+      sink.write('$delimiter${key.optionTitle}');
     }
   }
 
-  // Writes to a CSV file from provided `jsonData` with a provided file name and address `fileAddress`.
-  // Parameters:
-  // - jsonData: JSON object data to write to the CSV file
-  // - fileAddress: file address name of new CSV file (without .csv extension; this is added by the method) 
-  Future<void> _writeToCsv() async {
-    if (destination == null) {
-      error = '► No destination directory selected.';
-      setState(() {});
-      return;
-    }
-
-    final DateTime now = DateTime.now();
-    setState(() => fileName = 'rcsb_pdb_custom_report_${now.year}${now.month}${now.day}${now.hour}${now.minute}${now.second}.csv');
-    final IOSink sink = File('$destination\\$fileName').openWrite(encoding: utf8); // creates CSV file and opens sink
-    
-    sink.done.ignore();
-
-    sink.write('sep=|\n');
-    if (!process) {
-      await _writeHeader(sink);
-    }
-    await _writeCats(sink);
-
-    if (process) {
-      sink.write('|PDB Web Linker|Download PDB File');
-      if (selectedOptions.contains(OptionKey.s0o5)) {
-        sink.write('|DOI Linker|Literature');
-      }
-      if (selectedOptions.contains(OptionKey.p2o18)) {
-        sink.write('|Target');
-      }
-    }
-
-    sink.write('\n');
-
-    for (int i = 0; i < resultsFound.length; i++) {
-      sink.write('${resultsFound[i]}');
-      if (process) {
-        for (OptionKey option in selectedOptions) {
-          sink.write('|${option.contentP(jsonObject.all[i]) ?? ''}'.replaceAll('\n', '\\n'));
-        }
-        sink.write('|${resultsFound[i]}|${resultsFound[i]}.pdb');
-        if (selectedOptions.contains(OptionKey.s0o5)) {
-          String? doi = OptionKey.s0o5.contentP(jsonObject.all[i])?.replaceAll('\n', '\\n');
-          if (doi != null) {
-            sink.write('|$doi|${doi.split('/').last}.pdf');
-          } else {
-            sink.write('||');
-          }
-        }
-        if (selectedOptions.contains(OptionKey.p2o18)) {
-          sink.write('|${_getTarget(OptionKey.p2o18.contentP(jsonObject.all[i]))}'.replaceAll('\n', '\\n'));
-        }
-        sink.write('\n');
-      } else {
-        int maxLength = 0;
-
-        for (OptionKey option in selectedOptions) {
-          if (option.needSpan()) {
-            List? list = option.contentW(jsonObject.all[i]);
-            if (list == null) {
-              sink.write('|');
-            } else {
-              if (list.length > maxLength) {
-                maxLength = list.length;
-              }
-              sink.write('|${list[0]}'.replaceAll('\n', '\\n'));
-            }
-          } else {
-            sink.write('|${option.contentW(jsonObject.all[i]) ?? ''}'.replaceAll('\n', '\\n'));
-          }
-        }
-
-        sink.write('\n');
-
-        for (int j = 1; j < maxLength; j++) {
-          for (OptionKey option in selectedOptions) {
-            if (option.needSpan()) {
-              List? list = option.contentW(jsonObject.all[i]);
-              if (list == null || list.length <= j) {
-                sink.write('|');
-              } else {
-                sink.write('|${list[j]}'.replaceAll('\n', '\\n'));
-              }
-            } else {
-              sink.write('|');
-            }
-          }
-          sink.write('\n');
-        }
-      }
-    }
-
-    try {
-      await sink.flush();
-      await sink.close();
-    } on FileSystemException catch (e) {
-      error = 'Error: Unable to write a new CSV file: $e';
-      setState(() {});
-      return;
-    }
-  }
-
+  // TODO: implement into Hive
   String _getTarget(String code) {
     switch (code) {
       case 'P11362': return 'FGFR1';
@@ -1338,87 +1471,71 @@ class CustomQueryViewState extends State<CustomQueryView> {
     }
   }
 
+  // Queries RCSB PDB's search and data APIs from user's search query input.
   void _queryApi() async {
-    if (searchLock) {
+    if (searchLock) { // ends if lock is not unlocked
       return;
     }
 
-    final List<OptionKey> sortedOptions = List.from(selectedOptions);
-    sortedOptions.sort((a, b) => a.key.compareTo(b.key));
+    final List<OptionKey> sortedOptions = List.from(selectedOptions); // list copy of user selected data types
+    sortedOptions.sort((a, b) => a.key.compareTo(b.key)); // sorting list copy
     
-    searchLock = true;
-    successful = false;
-    queryCopy = query;
+    searchLock = true; // locks searchLock
+    successful = false; // resets successful status
+    queryCopy = query; // creates image of user query (unnecessary in current implementation)
     setState(() {});
-    if (query == '') {
-      error = '► Please provide a query.';
+
+    if (query == '') { // ends and releases lock if empty query
+      errorMsg = '► Please provide a query.';
       searchLock = false;
       setState(() {});
-      return null;
-    } else if (selectedOptions.isEmpty) {
+      return;
+    } else if (selectedOptions.isEmpty) { // ends and releases lock if no data types selected; redundant check (should be impossible)
       searchLock = false;
-      return null;
+      return;
     }
-    print('start');
-    print('client query: $query');
+
     var client = http.Client();
-    JsonWObject parsedObj;
+    JsonWObject parsedObj; // initialising JSON object
+    // querying search API
     try {
       final searchUrl = 'https://search.rcsb.org/rcsbsearch/v2/query?json=%7B"query":%7B"type":"terminal"%2C"label":"full_text"%2C"service":"full_text"%2C"parameters":%7B"value":"$query"%7D%7D%2C"return_type":"entry"%2C"request_options":%7B"paginate":%7B"rows":10000%2C"start":0%7D%2C"results_verbosity":"compact"%2C"results_content_type":%5B"experimental"%5D%2C"sort":%5B%7B"sort_by":"score"%2C"direction":"desc"%7D%5D%2C"scoring_strategy":"combined"%7D%7D';
-      print('requesting result set from RCSB search through url: $searchUrl');
-      final searchResponse = await client.get(
-          Uri.parse(searchUrl));
-      final Map<String, dynamic> searchParsed = jsonDecode(searchResponse.body);
+      final searchResponse = await client.get(Uri.parse(searchUrl)); // response
+      final Map<String, dynamic> searchParsed = jsonDecode(searchResponse.body); // decoding JSON
+      
+      // retrieving entry results
       final List<String>? resultSet = (searchParsed['result_set'] as List?)?.map((e) => '$e').toList();
       setState(() {
         resultsFound.clear();
         resultsFound.addAll(resultSet as List);
       });
-      print('received response: $resultSet');
+
       if (resultSet == null) {
         // do nothing
       } else {
         final resultSetString = resultSet.asString();
+        // querying data API from retrieved responses and options
         try {
           String entrySet = resultSetString.substring(1, resultSetString.length - 1);
-          List<String> optionAddresses = sortedOptions.map((e) => e.address).toList();
-          String optionUrl = '';
 
-          for (String option in optionAddresses) {
+          List<String> optionAddresses = sortedOptions.map((e) => e.address).toList(); // getting options formatted as URL String
+          String optionUrl = '';
+          for (String option in optionAddresses) { // generating options portion of URL
             optionUrl = '$optionUrl$option';
           }
           
           final String dataUrl = 'https://data.rcsb.org/graphql?query=%7Bentries(entry_ids:%5B$entrySet%5D)%7Brcsb_id$optionUrl%7D%7D';
-
-          print('requesting data from RCSB PDB through url: $dataUrl');
-
           final dataResponse = await client.get(Uri.parse(dataUrl));
+          final jsonString = jsonDecode(dataResponse.body); // decoding JSON
+          List entries = jsonString['data']?['entries']; // lightly parsing JSON
+          parsedObj = JsonWObject.initializeFromJson(jsonEncode(entries)); // creating JSON object from resulting String
           
-          print('received response: ${dataResponse.body}');
-
-          final jsonString = jsonDecode(dataResponse.body);
-          List entries = jsonString['data']?['entries'];
-          parsedObj = JsonWObject.initializeFromJson(jsonEncode(entries));
-          //print(entries);
-          //print('successfully converted to Json object for the following entries: ${parsedObj.all.structData.keywords.pdbID}');
-          
-          for (var opt in parsedObj.all) {
-
-            if (opt.structData.pubPrim.author != null) {
-              List mat = opt.structData.pubPrim.author as List;
-              if (mat.length > 2) {
-                print('$mat : ${opt.id}');
-              }
-            }
-          }
-
-          // print(parsedObj.all.map((e) => e.structData.crystProp.matthews).toList());
-          print('end');
-          setState(() => successful = true);
-          jsonObject = parsedObj;
+          setState(() {
+            jsonObject = parsedObj;
+            successful = true;
+          });
         } catch (e) {
-          print(e);
-          error = '► Failed to query. Server may not have responded in time.\n► Your query was: \'$queryCopy\'';
+          errorMsg = '► Failed to query. Server may not have responded in time.\n► Your query was: \'$queryCopy\''; // case: failed to query data API
           setState(() {});
           throw Exception('failed to query: $e');
         } finally {
@@ -1427,8 +1544,8 @@ class CustomQueryViewState extends State<CustomQueryView> {
         }
       }
     } catch (e) {
-      if (error == '') {
-        error = '► No results. Please check that your query is correct.\n► Your query was: \'$queryCopy\'.';
+      if (errorMsg == '') {
+        errorMsg = '► No results. Please check that your query is correct.\n► Your query was: \'$queryCopy\'.'; // case: failed to query search API
       }
       searchLock = false;
       setState(() {});
@@ -1438,7 +1555,12 @@ class CustomQueryViewState extends State<CustomQueryView> {
   }
 }
 
+// String extensions: additional self-described methods for List<String>'s
 extension StringExtensions on List<String> {
+  // Returns a String representation of a List of Strings
+  // where each element is wrapped in double quotes `"` and
+  // without square brackets, seperated by commas with no space.
+  // (e.g. ['hello', 'world'] becomes the String '"hello","world"')
   String asString() {
     String toReturn = '"';
     for (String entry in this) {
@@ -1448,6 +1570,8 @@ extension StringExtensions on List<String> {
   }
 }
 
+// This class represents a coarse filter button (category dropdown button)
+// on this view's main panel.
 class CoarseFilterButton extends StatefulWidget {
   final Category category;
   final VoidCallback onTap;
@@ -1482,8 +1606,8 @@ class CoarseFilterButtonState extends State<CoarseFilterButton> {
       },
       child: Container(
         width: 300,
-        margin: EdgeInsets.only(bottom: 1),
-        padding: EdgeInsets.only(left: 10, top: 5, bottom: 5),
+        margin: const EdgeInsets.only(bottom: 1),
+        padding: const EdgeInsets.only(left: 10, top: 5, bottom: 5),
         decoration: BoxDecoration(
           color: widget.selected 
                 ? widget.selectColor
@@ -1500,9 +1624,15 @@ class CoarseFilterButtonState extends State<CoarseFilterButton> {
                 fontWeight: widget.selected ? FontWeight.w600 : FontWeight.normal
               )
             ),
-            Spacer(),
-            Icon(widget.selected ? Icons.keyboard_arrow_down : Icons.chevron_right, color: const Color.fromARGB(220, 255, 255, 255), size: 17),
-            SizedBox(width: 5),
+            const Spacer(),
+            Icon(
+              widget.selected 
+                    ? Icons.keyboard_arrow_down 
+                    : Icons.chevron_right,
+              color: const Color.fromARGB(220, 255, 255, 255),
+              size: 17
+            ),
+            const SizedBox(width: 5),
           ],
         )
       ),
@@ -1510,6 +1640,8 @@ class CoarseFilterButtonState extends State<CoarseFilterButton> {
   }
 }
 
+// This class represents a coarse filter button (subcategory button)
+// on this view's main panel.
 class FineFilterButton extends StatefulWidget {
   final SubCategory subCat;
   final VoidCallback onTap;
@@ -1544,8 +1676,8 @@ class FineFilterButtonState extends State<FineFilterButton> {
       },
       child: Container(
         width: 300,
-        margin: EdgeInsets.only(bottom: 1),
-        padding: EdgeInsets.only(left: 20, top: 2, bottom: 2),
+        margin: const EdgeInsets.only(bottom: 1),
+        padding: const EdgeInsets.only(left: 20, top: 2, bottom: 2),
         decoration: BoxDecoration(
           color: widget.selected 
                 ? widget.selectColor
@@ -1558,14 +1690,24 @@ class FineFilterButtonState extends State<FineFilterButton> {
             Text(
               widget.subCat.title,
               style: TextStyle(
-                color: widget.selected ? const Color.fromARGB(220, 255, 255, 255) : Colors.black,
+                color: widget.selected ? 
+                      const Color.fromARGB(220, 255, 255, 255) 
+                      : Colors.black,
                 fontWeight: FontWeight.normal,
                 fontSize: 13,
               )
             ),
-            Spacer(),
-            Icon(widget.selected ? Icons.clear : Icons.chevron_right, color: widget.selected ? const Color.fromARGB(220, 255, 255, 255) : Colors.black, size: 17),
-            SizedBox(width: 5),
+            const Spacer(),
+            Icon(
+              widget.selected
+                    ? Icons.clear
+                    : Icons.chevron_right, 
+              color: widget.selected 
+                    ? const Color.fromARGB(220, 255, 255, 255) 
+                    : Colors.black,
+              size: 17
+            ),
+            const SizedBox(width: 5),
           ],
         )
       ),
