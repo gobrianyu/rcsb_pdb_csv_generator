@@ -1,3 +1,4 @@
+import 'package:hive/hive.dart';
 import 'package:rcsb_pdb_json2csv_flex/models/json_write_object.dart';
 
 final need = [OptionKey.s6o0, OptionKey.s6o1, OptionKey.s6o2, OptionKey.s6o3, OptionKey.s6o4, OptionKey.s6o5, OptionKey.s7o0, OptionKey.s7o1, OptionKey.s7o2, OptionKey.s7o3, 
@@ -629,95 +630,91 @@ enum OptionKey {
       case o1o5: return entry.oligoData.oligoFeat.glycosylation?.asString();
     }
   }
-
-  String? _ligP(List<String?>? smiles, List<num?>? mws, List<String?>? ids, OptionKey option) {
-    if (smiles == null || mws == null || ids == null || 
-        smiles.length != mws.length || mws.length != ids.length) {
-      if (option == n1o2) {
-        return ids?.asString();
-      } else if (option == n1o6) {
-        return smiles?.asString();
-      } else if (option == n1o1) {
-        return mws?.asString();
-      }
-      throw Exception('Incorrect option called on ligand processor method `_ligP` in class `option_key.dart`');
-    }
-
-    final List<String> filter1 = ['ARS', 'BEN', 'BR', 'CA', 'CAC', 'CD', 'CL', 'CO', 'CU', 'DVT', 'IOD', 'MG', 'MN', 
-                                  'NA', 'NI', 'NO3', 'PO4', 'PT', 'SE', 'SO4', 'UNX', 'ZN', '1PE', '2HT', '2PE', '3TR', 
-                                  '7PE', 'ACE', 'ACT', 'ACY', 'AKG', 'BAQ', 'BCT', 'BEF', 'BMA', 'BME', 'BOG', 'BU3', 
-                                  'BUD', 'CIT', 'CME', 'CO3', 'DMS', 'DTT', 'DTU', 'DTV', 'EDO', 'EGL', 'EPE', 'FES', 
-                                  'FMT', 'FS3', 'FS4', 'GBL', 'GLY', 'GOL', 'GSH', 'HEC', 'HED', 'HEM', 'HVB', 'IMD', 
-                                  'IPA', 'MAN', 'MES', 'MG8', 'MGF', 'MLI', 'MO6', 'MPD', 'MYR', 'NAG', 'NCO', 'NH3', 
-                                  'OCT', 'OGA', 'OPG', 'P2U', 'PE5', 'PEG', 'PG4', 'PGE', 'PGO', 'PHO', 'PLP', 'POP', 
-                                  'PPI', 'PSE', 'PSU', 'PTL', 'SEO', 'SGM', 'SPD', 'SPM', 'SRT', 'SUC', 'SUL', 'SY8', 
-                                  'TAM', 'TAR', 'TFA', 'TLA', 'TPP', 'TRS'];
-    final List<String> filter2 = ['ADP', 'AMP', 'ATP', 'CMP', 'GDP', 'GNP', 'GTP', 'MTA', 'SAM', 'SAH', 'SFG', '5GP'];
-
-    if (option != n1o2 && option != n1o6 && option != n1o1) {
-      throw Exception('Incorrect option called on ligand processor method `_ligP` in class `option_key.dart`');
-    }
-
-    List<LigPObj> ligObjs = [];
-
-    for (int i = 0; i < smiles.length; i++) {
-      final mwCurr = mws[i];
-      if (mwCurr != null) {
-        ligObjs.add(LigPObj(id: ids[i], smile: smiles[i], mw: mwCurr));
-      }
-    }
-
-    ligObjs.sort((a, b) => b.mw.compareTo(a.mw));
-
-    List newLigList = List.from(ligObjs);
-
-    for (LigPObj obj in ligObjs) {
-      if (filter1.contains(obj.id)) {
-        newLigList.remove(obj);
-      } else if (!filter2.contains(obj.id)) {
-        if (option == n1o2) { // case ligand ids
-          return obj.id;
-        } else if (option == n1o6) { // case ligand smiles (stereo)
-          return obj.smile;
-        } else {
-          return obj.mw.toString();
-        }
-      }
-    }
-
-    // case nothing left
-    if (newLigList.isEmpty) {
-      return null;
-    }
-
-    // case filter2 ligand remaining
-    if (option == n1o2) {
-      return newLigList[0].id;
-    } else if (option == n1o1) {
-      return newLigList[0].mw.toString();
-    }
-    return newLigList[0].smile;
-  }
-
-  String _accessP(List<List<String?>?>? list) {
-    final List<String> master = ['P11362','P21802','P22607','P22455','P07333','P51449','Q9NZQ7','P21589','P01116','P61073','P00533','P31153','O14744','Q07889','Q07890','P08581','P24941','P42336','P54750','Q01064','Q14123','O00408','Q14432','Q13370','P27815','Q07343','Q08493','Q08499','Q5VU43','O76074','P16499','P35913','P51160','O43924','P18545','Q13956','Q13946','Q9NP56','O60658','O95263','O76083','Q9Y233','Q9HCR9','Q6L8Q7','P01116-2','P28907','P04626','P51531','P11802','Q00534','Q13131','P54646','Q9Y478','O43741','P54619','Q9UGJ0','Q9UGI9','P80385','P54645','P40763','P42226','Q86W56','P51532',];
-    if (list != null) {
-      for (List<String?>? subList in list) {
-        if (subList != null) {
-          for (String? code in subList) {
-            if (code != null && master.contains(code)) {
-              return code;
-            }
-          }
-        }
-      }
-    }
-    return '';
-  }
   
   bool needSpan() {
     return need.contains(this);
   }
+}
+
+Box<Map>? mapBox = Hive.box<Map>('mapBox');
+Box<List>? filterBox = Hive.box<List>('filterBox');
+
+final List<String> master = (mapBox?.get('targets')?.cast<String, String>().keys.toList()) ?? [];
+final List<String> filter1 = filterBox?.get('filter1')?.cast<String>() ?? [];
+final List<String> filter2 = filterBox?.get('filter2')?.cast<String>() ?? [];
+final List<String> filter3 = filterBox?.get('filter3')?.cast<String>() ?? [];
+
+String _accessP(List<List<String?>?>? list) {
+  if (list != null) {
+    for (List<String?>? subList in list) {
+      if (subList != null) {
+        for (String? code in subList) {
+          if (code != null && master.contains(code)) {
+            return code;
+          }
+        }
+      }
+    }
+  }
+  return '';
+}
+
+String? _ligP(List<String?>? smiles, List<num?>? mws, List<String?>? ids, OptionKey option) {
+  if (smiles == null || mws == null || ids == null || 
+      smiles.length != mws.length || mws.length != ids.length) {
+    if (option == OptionKey.n1o2) {
+      return ids?.asString();
+    } else if (option == OptionKey.n1o6) {
+      return smiles?.asString();
+    } else if (option == OptionKey.n1o1) {
+      return mws?.asString();
+    }
+    throw Exception('Incorrect option called on ligand processor method `_ligP` in class `option_key.dart`');
+  }
+
+  if (option != OptionKey.n1o2 && option != OptionKey.n1o6 && option != OptionKey.n1o1) {
+    throw Exception('Incorrect option called on ligand processor method `_ligP` in class `option_key.dart`');
+  }
+
+  List<LigPObj> ligObjs = [];
+
+  for (int i = 0; i < smiles.length; i++) {
+    final mwCurr = mws[i];
+    if (mwCurr != null) {
+      ligObjs.add(LigPObj(id: ids[i], smile: smiles[i], mw: mwCurr));
+    }
+  }
+
+  ligObjs.sort((a, b) => b.mw.compareTo(a.mw));
+
+  List newLigList = List.from(ligObjs);
+
+  for (LigPObj obj in ligObjs) {
+    if (filter1.contains(obj.id) || filter2.contains(obj.id)) {
+      newLigList.remove(obj);
+    } else if (!filter3.contains(obj.id)) {
+      if (option == OptionKey.n1o2) { // case ligand ids
+        return obj.id;
+      } else if (option == OptionKey.n1o6) { // case ligand smiles (stereo)
+        return obj.smile;
+      } else {
+        return obj.mw.toString();
+      }
+    }
+  }
+
+  // case nothing left
+  if (newLigList.isEmpty) {
+    return null;
+  }
+
+  // case filter2 ligand remaining
+  if (option == OptionKey.n1o2) {
+    return newLigList[0].id;
+  } else if (option == OptionKey.n1o1) {
+    return newLigList[0].mw.toString();
+  }
+  return newLigList[0].smile;
 }
 
 List<String?>? groupS(List<List<String?>?>? list) {
