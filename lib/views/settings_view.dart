@@ -157,15 +157,15 @@ class SettingsViewState extends State<SettingsView> {
           )
         );
       }
-      return SingleChildScrollView(
-        child: Container(
-          height: 410,
-          width: 600,
-          color: containerColourLight,
+      return Container(
+        height: 410,
+        width: 600,
+        color: containerColourLight,
+        child: SingleChildScrollView(
           child: Column(
             children: targets!.entries.map((entry) => _targetTile(entry.key, entry.value)).toList()
-          ),
-        )
+          )
+        ),
       );
     }
     return Container(

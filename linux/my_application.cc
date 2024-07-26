@@ -40,11 +40,11 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "rcsb_pdb_json2csv_flex");
+    gtk_header_bar_set_title(header_bar, "RCSB PDB CSV Generator");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "rcsb_pdb_json2csv_flex");
+    gtk_window_set_title(window, "RCSB PDB CSV Generator");
   }
 
   gtk_window_set_default_size(window, 1280, 720);

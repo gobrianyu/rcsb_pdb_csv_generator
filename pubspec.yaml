@@ -10,6 +10,7 @@ dependencies:
   file_picker: ^8.0.6
   flutter:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
   hive: ^2.2.3
   http: ^1.2.1
   open_file_plus: ^3.4.1+1
