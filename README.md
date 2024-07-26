@@ -10,7 +10,7 @@ Two options are available:
 
 #### 1. Installer
 
-- Download the installer `csv_generator_setup` from the root of this repository.
+- Download the installer `csv_generator_setup.exe` from the root of this repository.
 - Run the installer and follow setup instructions.
 
 #### 2. Source Code
