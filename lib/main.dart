@@ -19,6 +19,7 @@ void main() async {
   
   await Hive.openBox<Map>('mapBox');
   await Hive.openBox<List>('listBox');
+  await Hive.openBox<List>('filterBox');
 
   runApp(const MainApp());
 }
