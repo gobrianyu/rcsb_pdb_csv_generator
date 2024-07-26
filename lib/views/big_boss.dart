@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rcsb_pdb_json2csv_flex/views/custom_query_view.dart';
 import 'package:rcsb_pdb_json2csv_flex/views/convert_view.dart';
 import 'package:rcsb_pdb_json2csv_flex/views/query_view.dart';
+import 'package:rcsb_pdb_json2csv_flex/views/settings_view.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class BigBoss extends StatefulWidget {
@@ -47,6 +48,7 @@ class BigBossState extends State<BigBoss> {
                 SizedBox(width: 1),
                 _buildTab(ConvertView(), 2, 'Convert'),
                 Spacer(),
+                _buildTab(SettingsView(), 3, 'Settings'),
               ]
             ),
           )

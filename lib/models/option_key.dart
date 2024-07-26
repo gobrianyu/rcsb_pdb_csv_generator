@@ -173,7 +173,7 @@ enum OptionKey {
   p2o3(125, 'Polymer Entity Data', 'Polymer Features', 'Polymer Entity Sequence Length', 'Monomer length of the sample sequence.', '%0Apolymer_entities%7Bentity_poly%7Brcsb_sample_sequence_length%7D%7D'),
   p2o4(126, 'Polymer Entity Data', 'Polymer Features', 'Entity Macromolecule Type', 'Type of the polymer.', '%0Apolymer_entities%7Bentity_poly%7Btype%7D%7D'),
   p2o5(135, 'Polymer Entity Data', 'Polymer Features', 'Plasmid Name', 'Name of the plasmid that produced the entity in the host organism.', '%0Apolymer_entities%7Bentity_src_gen%7Bplasmid_name%7D%7D'),
-  p2o6(137, 'Polymer Entity Data', 'Polymer Features', 'Sequence Cluster ID', 'Identifier for a cluster at the specified level of sequence identity within the cluster data set.', '%0Apolymer_entities%7Brcsb_cluster_membership%7Bcluster_id%7D%7D'),
+  p2o6(138, 'Polymer Entity Data', 'Polymer Features', 'Sequence Cluster ID', 'Identifier for a cluster at the specified level of sequence identity within the cluster data set.', '%0Apolymer_entities%7Brcsb_cluster_membership%7Bcluster_id%7D%7D'),
   p2o7(139, 'Polymer Entity Data', 'Polymer Features', 'Sequence Cluster ID Threshold', 'Sequence identity expressed as an integer percent value.', '%0Apolymer_entities%7Brcsb_cluster_membership%7Bidentity%7D%7D'),
   p2o8(128, 'Polymer Entity Data', 'Polymer Features', 'Molecular Weight', 'Formula mass of the entity in kDa.', '%0Apolymer_entities%7Brcsb_polymer_entity%7Bformula_weight%7D%7D'),
   p2o9(129, 'Polymer Entity Data', 'Polymer Features', 'Macromolecule Name', 'Description of the polymer entity.', '%0Apolymer_entities%7Brcsb_polymer_entity%7Bpdbx_description%7D%7D'),

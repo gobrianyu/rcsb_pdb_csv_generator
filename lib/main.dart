@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:rcsb_pdb_json2csv_flex/views/big_boss.dart';
 import 'package:window_manager/window_manager.dart';
-
+import 'package:hive/hive.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +13,13 @@ void main() async {
     WindowManager.instance.setMinimumSize(const Size(1300, 800));
     WindowManager.instance.setMaximumSize(const Size(1300, 800));
   }
+
+  Directory appDocDir = await getApplicationSupportDirectory();
+  Hive.init(appDocDir.path);
+  
+  await Hive.openBox<Map>('mapBox');
+  await Hive.openBox<List>('listBox');
+
   runApp(const MainApp());
 }
 
