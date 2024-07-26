@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:rcsb_pdb_json2csv_flex/views/custom_query_view.dart';
-import 'package:rcsb_pdb_json2csv_flex/views/convert_view.dart';
-import 'package:rcsb_pdb_json2csv_flex/views/query_view.dart';
 import 'package:rcsb_pdb_json2csv_flex/views/settings_view.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -23,7 +21,7 @@ class BigBossState extends State<BigBoss> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: PreferredSize(
-          preferredSize: Size(double.infinity, 70), 
+          preferredSize: const Size(double.infinity, 70), 
           child: Container(
             color: appBarColor,
             height: 70,
@@ -37,18 +35,15 @@ class BigBossState extends State<BigBoss> {
                       // do nothing
                     }
                   },
-                  child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Image(image: AssetImage('assets/rcsb_logo.png'), width: 140),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Image(image: AssetImage('assets/rcsb_logo.png'), width: 140),
+                  ),
                 ),
-                ),
-                _buildTab(CustomQueryView(), 0, 'Custom Query'),
-                SizedBox(width: 1),
-                _buildTab(QueryView(), 1, 'Query'),
-                SizedBox(width: 1),
-                _buildTab(ConvertView(), 2, 'Convert'),
-                Spacer(),
-                _buildTab(SettingsView(), 3, 'Settings'),
+                _buildTab(const CustomQueryView(), 0, 'Custom Query'),
+                const SizedBox(width: 1),
+                _buildTab(const SettingsView(), 1, 'Settings'),
+                const Spacer(),
               ]
             ),
           )
@@ -70,12 +65,12 @@ class BigBossState extends State<BigBoss> {
             width: 170,
             height: 50,
             alignment: Alignment.center,
-            padding: EdgeInsets.only(top: 5),
+            padding: const EdgeInsets.only(top: 5),
             decoration: BoxDecoration(
               color: selected == key
                     ? selectedColor
                     : deselectedColor,
-              borderRadius: BorderRadius.only(topLeft: Radius.circular(15), topRight: Radius.circular(15)),
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(15), topRight: Radius.circular(15)),
             ),
             child: Text(
               name,
@@ -89,7 +84,7 @@ class BigBossState extends State<BigBoss> {
           Container(
             width: 170,
             height: 3,
-            color: selected == key ? null : Color.fromARGB(205, 88, 122, 151)
+            color: selected == key ? null : const Color.fromARGB(205, 88, 122, 151)
           )
         ],
       ),

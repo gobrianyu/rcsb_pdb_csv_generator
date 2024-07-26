@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 
 class SettingsView extends StatefulWidget {
@@ -58,7 +59,7 @@ class SettingsViewState extends State<SettingsView> {
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           _mainPanel(),
-          _liveFilterPanel(),
+          _infoPanel(),
         ],
       ),
     );
@@ -101,7 +102,7 @@ class SettingsViewState extends State<SettingsView> {
                   children: [
                     Container(
                       width: 290,
-                      padding: EdgeInsets.only(left: 10, right: 10, top: 5, bottom: 5),
+                      padding: const EdgeInsets.only(left: 10, right: 10, top: 5, bottom: 5),
                       child: Text(
                         'Accession Code',
                         style: TextStyle(
@@ -112,7 +113,7 @@ class SettingsViewState extends State<SettingsView> {
                     ),
                     Container(
                       width: 310,
-                      padding: EdgeInsets.only(left: 10, right: 10, top: 5, bottom: 5),
+                      padding: const EdgeInsets.only(left: 10, right: 10, top: 5, bottom: 5),
                       child: Text(
                         'Target',
                         style: TextStyle(
@@ -125,7 +126,7 @@ class SettingsViewState extends State<SettingsView> {
                 )
               ),
               _currentTargets(),
-              SizedBox(height: 15),
+              const SizedBox(height: 15),
             ],
           ),
           Row(
@@ -228,6 +229,8 @@ class SettingsViewState extends State<SettingsView> {
           targets ??= {};
           targets![accessText] = targetText;
           mapBox?.put('targets', targets!);
+          accessController.clear();
+          targetController.clear();
           setState(() {});
         }
       },
@@ -243,22 +246,99 @@ class SettingsViewState extends State<SettingsView> {
 
   // Live panel showing user selected data types, a console for status
   // updates and errors, and the database query search bar.
-  Widget _liveFilterPanel() {
+  Widget _infoPanel() {
     // white background container
     return Container(
       width: 420,
-      height: 450,
-      margin: const EdgeInsets.only(left: 15, top: 40, bottom: 10),
-      padding: const EdgeInsets.all(10),
+      height: 730,
+      margin: const EdgeInsets.only(left: 15, top: 40),
+      padding: const EdgeInsets.only(left: 31, right: 25, top: 31, bottom: 20),
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.all(Radius.circular(50))
+        borderRadius: BorderRadius.only(topRight: Radius.circular(50), topLeft: Radius.circular(50))
       ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          
-        ],
+      child: SingleChildScrollView(
+        child: Container(
+          padding: const EdgeInsets.only(right: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Setting Accession Code Targets',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Setting accession code targets is linked to the \'Process file\' option found next to the \'Generate CSV\' button. Accession codes that have been submitted are automatically saved locally once the \'Add+\' button is clicked. No data is stored or accessed remotely and locally stored boxes are encrypted.',
+                textAlign: TextAlign.justify,
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Error Codes on the Console',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500
+                )
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Error and warning codes may appear on the console. Most will provide further details and instructions on how to solve the error. However certain errors that occur may require further attention:',
+                textAlign: TextAlign.justify,
+              ),
+              const SizedBox(height: 5),
+              const Padding(
+                padding: EdgeInsets.only(left: 15),
+                child: Text(
+                  '\'Failed to query. Server may not have responded in time.\' This error may occur either due to an excessive (large) query or the network being too slow.',
+                  textAlign: TextAlign.justify,
+                ),
+              ),
+              const SizedBox(height: 5),
+              const Padding(
+                padding: EdgeInsets.only(left: 15),
+                child: Text(
+                  '\'Error: Unable to write a new CSV file {}.\' Users should not typically encounter this error. If encountered, please check that no files in the destination folder is valid and that there are no files of the same name as the attempted generation file (see \'Software Information\' below for more on file name format). If issue persists, please contact the developer.',
+                  textAlign: TextAlign.justify,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Software Information | v1.0',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500
+                )
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Welcome to the unofficial CSV getter for RCSB PDB. This software requires a strong network connection as it uses a search API and a data API provided by RCSB PDB to query protein entries. For more implementation details, please refer to the originating GitHub repository:',
+                textAlign: TextAlign.justify,
+                softWrap: true,
+              ),
+              const SizedBox(height: 5),
+              InkWell(
+                onTap: () async {
+                  final Uri url = Uri.parse('https://www.github.com/gobrianyu/rcsb_pdb_csv_generator/');
+                  if (!await launchUrl(url)) {
+                    // do nothing
+                  }
+                },
+                child: const Center(child: Text('github.com/gobrianyu/rcsb_pdb_csv_generator', style: TextStyle(fontWeight: FontWeight.w500, color: Colors.blue))),
+              ),
+              const SizedBox(height: 5),
+              const Text('Files generated by this software are named in the following format:', textAlign: TextAlign.justify,),
+              const SizedBox(height: 5),
+              const Center(child: Text('rcsb_pdb_custom_report_{TIME}.csv,')),
+              const SizedBox(height: 5),
+              const Text('where {TIME} is the local system\'s time on CSV generation, formatted as \'YYYYMMDDhhmmss\'.', textAlign: TextAlign.justify,),
+              const SizedBox(height: 10),
+              const Text('Developed by Brian Yu, 2024.'),
+            ],
+          ),
+        )
       )
     );
   }
@@ -415,75 +495,5 @@ class SettingsViewState extends State<SettingsView> {
     setState(() {
       targetText = targetController.text.trim();
     });
-  }
-
-  // TODO: implement into Hive
-  String _getTarget(String code) {
-    switch (code) {
-      case 'P11362': return 'FGFR1';
-      case 'P21802': return 'FGFR2';
-      case 'P22607': return 'FGFR3';
-      case 'P22455': return 'FGFR4';
-      case 'P07333': return 'CSF1R';
-      case 'P51449': return 'RORgt';
-      case 'Q9NZQ7': return 'PD-L1';
-      case 'P21589': return 'CD73';
-      case 'P01116': return 'KRAS';
-      case 'P61073': return 'CXCR4';
-      case 'P00533': return 'EGFR';
-      case 'P31153': return 'MAT2a';
-      case 'O14744': return 'PRMT5';
-      case 'Q07889': return 'SOS1';
-      case 'Q07890': return 'SOS2';
-      case 'P08581': return 'MET';
-      case 'P24941': return 'CDK2';
-      case 'P42336': return 'PI3Kalpha';
-      case 'P54750': return 'PDE1A';
-      case 'Q01064': return 'PDE1B';
-      case 'Q14123': return 'PDE1C';
-      case 'O00408': return 'PDE2A';
-      case 'Q14432': return 'PDE3A';
-      case 'Q13370': return 'PDE3B';
-      case 'P27815': return 'PDE4A';
-      case 'Q07343': return 'PDE4B';
-      case 'Q08493': return 'PDE4C';
-      case 'Q08499': return 'PDE4D';
-      case 'Q5VU43': return 'PDE4DIP';
-      case 'O76074': return 'PDE5A';
-      case 'P16499': return 'PDE6A';
-      case 'P35913': return 'PDE6B';
-      case 'P51160': return 'PDE6C';
-      case 'O43924': return 'PDE6D';
-      case 'P18545': return 'PDE6G';
-      case 'Q13956': return 'PDE6H';
-      case 'Q13946': return 'PDE7A';
-      case 'Q9NP56': return 'PDE7B';
-      case 'O60658': return 'PDE8A';
-      case 'O95263': return 'PDE8B';
-      case 'O76083': return 'PDE9A';
-      case 'Q9Y233': return 'PDE10A';
-      case 'Q9HCR9': return 'PDE11A';
-      case 'Q6L8Q7': return 'PDE12';
-      case 'P01116-2': return 'KRAS';
-      case 'P28907': return 'CD38';
-      case 'P04626': return 'HER2';
-      case 'P51531': return 'SMARCA2';
-      case 'P11802': return 'CDK4';
-      case 'Q00534': return 'CDK6';
-      case 'Q13131': return 'AMPK-alpha1';
-      case 'P54646': return 'AMPK-alpha2';
-      case 'Q9Y478': return 'AMPK-beta1';
-      case 'O43741': return 'AMPK-beta2';
-      case 'P54619': return 'AMPK-gamma1';
-      case 'Q9UGJ0': return 'AMPK-gamma2';
-      case 'Q9UGI9': return 'AMPK-gamma3';
-      case 'P80385': return 'AMPK-gamma1(Rat)';
-      case 'P54645': return 'AMPK-alpha1(Rat)';
-      case 'P40763': return 'STAT3';
-      case 'P42226': return 'STAT6';
-      case 'Q86W56': return 'PARG';
-      case 'P51532': return 'SMARCA4';
-      default: return '';
-    }
   }
 }

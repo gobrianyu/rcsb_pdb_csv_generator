@@ -998,22 +998,22 @@ class CustomQueryViewState extends State<CustomQueryView> {
   List<Widget> _buildFilterSubOptions(SubCategory subCat) {
     List<OptionKey> subs = [];
     for (OptionKey key in visibleOptions) {
-      if (key.subCatTitle == subCat.title) {
+      if (key.subCatTitle == subCat.title && key.catTitle == subCat.superCat) {
         subs.add(key);
       }
     }
     if (subs.isNotEmpty) {
       return [_buildSubOptionsTitle(subCat)] + subCat.optionKeys.where((e) => visibleOptions.contains(e)).map((e) => OptionSelector(
-      selectedOptions: selectedOptions,
-      favs: favs,
-      option: e,
-      onTap: selectorOnTap(e),
-      onFav: selectorOnFav(e),
-      onEnter: selectorOnEnter(e),
-      onExit: selectorOnExit(),
-      color: containerColourLight,
-      selectColor: selectionColour,
-    )).toList();
+        selectedOptions: selectedOptions,
+        favs: favs,
+        option: e,
+        onTap: selectorOnTap(e),
+        onFav: selectorOnFav(e),
+        onEnter: selectorOnEnter(e),
+        onExit: selectorOnExit(),
+        color: containerColourLight,
+        selectColor: selectionColour,
+      )).toList();
     }
     return [const SizedBox()];
   }
@@ -1051,14 +1051,14 @@ class CustomQueryViewState extends State<CustomQueryView> {
       if (favs != null) {
         if (favs!.contains(option.key)) {
           favs!.remove(option.key);
-          listBox?.put('listBox', favs!);
+          listBox?.put('favs', favs!);
         } else {
           favs!.add(option.key);
-          listBox?.put('listBox', favs!);
+          listBox?.put('favs', favs!);
         }
       } else if (favs == null) {
         favs = [option.key];
-        listBox?.put('listBox', favs!);
+        listBox?.put('favs', favs!);
       }
       setState(() {});
     };
@@ -1095,7 +1095,7 @@ class CustomQueryViewState extends State<CustomQueryView> {
       child: Row(
         children: [
           SizedBox(
-            width: 288,
+            width: 296,
             child: TextField(
               enabled: !searchLock && !successful, // locks during API search and after successful query
               controller: filterController,
@@ -1132,17 +1132,23 @@ class CustomQueryViewState extends State<CustomQueryView> {
                   }).toList(),
                 );
               },
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Search data types...',
-                hintStyle: TextStyle(
+                hintStyle: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.normal,
                 ),
-                border: OutlineInputBorder(
+                border: const OutlineInputBorder(
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: EdgeInsets.symmetric(horizontal: 5),
-                prefixIcon: Icon(Icons.search, size: 20)
+                contentPadding: const EdgeInsets.symmetric(horizontal: 5),
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: InkWell(
+                  onTap: () {
+                    setState(() => filterController.clear());
+                  },
+                  child: const Icon(Icons.clear, size: 18)
+                )
               ),
             ),
           ),
@@ -1633,79 +1639,14 @@ class CustomQueryViewState extends State<CustomQueryView> {
     }
   }
 
-  // TODO: implement into Hive
+  // Gets targets from stored Hive box and finds corresponding
+  // target of provided accession code if present.
   String _getTarget(String code) {
-    Map<String, String>? targets = mapBox?.get('myMap')?.cast<String, String>();
+    Map<String, String>? targets = mapBox?.get('targets')?.cast<String, String>();
     if (targets != null) {
       return targets[code] ?? '';
     }
     return '';
-    // switch (code) {
-    //   case 'P11362': return 'FGFR1';
-    //   case 'P21802': return 'FGFR2';
-    //   case 'P22607': return 'FGFR3';
-    //   case 'P22455': return 'FGFR4';
-    //   case 'P07333': return 'CSF1R';
-    //   case 'P51449': return 'RORgt';
-    //   case 'Q9NZQ7': return 'PD-L1';
-    //   case 'P21589': return 'CD73';
-    //   case 'P01116': return 'KRAS';
-    //   case 'P61073': return 'CXCR4';
-    //   case 'P00533': return 'EGFR';
-    //   case 'P31153': return 'MAT2a';
-    //   case 'O14744': return 'PRMT5';
-    //   case 'Q07889': return 'SOS1';
-    //   case 'Q07890': return 'SOS2';
-    //   case 'P08581': return 'MET';
-    //   case 'P24941': return 'CDK2';
-    //   case 'P42336': return 'PI3Kalpha';
-    //   case 'P54750': return 'PDE1A';
-    //   case 'Q01064': return 'PDE1B';
-    //   case 'Q14123': return 'PDE1C';
-    //   case 'O00408': return 'PDE2A';
-    //   case 'Q14432': return 'PDE3A';
-    //   case 'Q13370': return 'PDE3B';
-    //   case 'P27815': return 'PDE4A';
-    //   case 'Q07343': return 'PDE4B';
-    //   case 'Q08493': return 'PDE4C';
-    //   case 'Q08499': return 'PDE4D';
-    //   case 'Q5VU43': return 'PDE4DIP';
-    //   case 'O76074': return 'PDE5A';
-    //   case 'P16499': return 'PDE6A';
-    //   case 'P35913': return 'PDE6B';
-    //   case 'P51160': return 'PDE6C';
-    //   case 'O43924': return 'PDE6D';
-    //   case 'P18545': return 'PDE6G';
-    //   case 'Q13956': return 'PDE6H';
-    //   case 'Q13946': return 'PDE7A';
-    //   case 'Q9NP56': return 'PDE7B';
-    //   case 'O60658': return 'PDE8A';
-    //   case 'O95263': return 'PDE8B';
-    //   case 'O76083': return 'PDE9A';
-    //   case 'Q9Y233': return 'PDE10A';
-    //   case 'Q9HCR9': return 'PDE11A';
-    //   case 'Q6L8Q7': return 'PDE12';
-    //   case 'P01116-2': return 'KRAS';
-    //   case 'P28907': return 'CD38';
-    //   case 'P04626': return 'HER2';
-    //   case 'P51531': return 'SMARCA2';
-    //   case 'P11802': return 'CDK4';
-    //   case 'Q00534': return 'CDK6';
-    //   case 'Q13131': return 'AMPK-alpha1';
-    //   case 'P54646': return 'AMPK-alpha2';
-    //   case 'Q9Y478': return 'AMPK-beta1';
-    //   case 'O43741': return 'AMPK-beta2';
-    //   case 'P54619': return 'AMPK-gamma1';
-    //   case 'Q9UGJ0': return 'AMPK-gamma2';
-    //   case 'Q9UGI9': return 'AMPK-gamma3';
-    //   case 'P80385': return 'AMPK-gamma1(Rat)';
-    //   case 'P54645': return 'AMPK-alpha1(Rat)';
-    //   case 'P40763': return 'STAT3';
-    //   case 'P42226': return 'STAT6';
-    //   case 'Q86W56': return 'PARG';
-    //   case 'P51532': return 'SMARCA4';
-    //   default: return '';
-    // }
   }
 
   // Queries RCSB PDB's search and data APIs from user's search query input.
@@ -2042,7 +1983,7 @@ class OptionSelectorState extends State<OptionSelector> {
                       ]
                     ),
                   ),
-                  _isHovering ? _favsButton(widget.option) : const SizedBox()
+                  _isHovering || widget.favs?.contains(widget.option.key) == true ? _favsButton(widget.option) : const SizedBox()
                 ],
               ),
             ),
