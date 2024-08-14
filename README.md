@@ -1,5 +1,7 @@
 # RCSB PDB CSV Generator | v1.2
 
+<img src="./assets/rcsb1.png" alt="Sample screenshot of software." height="300"/>
+
 Developed by Brian Yu, 2024, Shanghai.
 
 This is a Windows-only Dart + Flutter software that enables users to query the [Protein Data Bank (RCSB PDB)](https://www.rcsb.org/) through its [search](https://search.rcsb.org/) and [data](https://data.rcsb.org/) APIs and download the entry response data as a CSV file. The parser encompasses all of the PDB's main data types (minus one duplicate) to allow users to customise their search queries.
