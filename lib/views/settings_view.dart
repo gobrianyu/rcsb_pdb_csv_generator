@@ -478,7 +478,7 @@ class SettingsViewState extends State<SettingsView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Software Information | v1.1',
+                'Software Information | v1.2',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500
@@ -508,6 +508,19 @@ class SettingsViewState extends State<SettingsView> {
               const Text('where {TIME} is the local system\'s time on CSV generation, formatted as \'YYYYMMDDhhmmss\'.', textAlign: TextAlign.justify,),
               const SizedBox(height: 10),
               const Text('Developed by Brian Yu, 2024.'),
+              const SizedBox(height: 20),
+              const Text(
+                'Querying',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'This software accepts general search term(s), entry ID(s), or sequence. Up to 10,000 results can be returned, sorted by score (large searches are not recommended without a stable internet connection). Multiple search terms can be entered at once by separating terms with a comma (e.g. "Term A, Term B"). For more information, refer to the RCSB PDB search API.',
+                textAlign: TextAlign.justify,
+              ),
               const SizedBox(height: 20),
               const Text(
                 'Setting Accession Code Targets',
@@ -581,6 +594,7 @@ class SettingsViewState extends State<SettingsView> {
                   textAlign: TextAlign.justify,
                 ),
               ),
+              const SizedBox(height: 30)
             ],
           ),
         )
