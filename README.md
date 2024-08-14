@@ -1,6 +1,6 @@
 # RCSB PDB CSV Generator | v1.2
 
-<img src="./assets/rcsb1.png" alt="Sample screenshot of software." height="500"/>
+<img src="./assets/rcsb1.png" alt="Sample screenshot of software." width="1000"/>
 
 Developed by Brian Yu, 2024, Shanghai.
 
