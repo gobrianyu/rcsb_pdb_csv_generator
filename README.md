@@ -7,7 +7,7 @@ Developed by Brian Yu, 2024, Shanghai.
 This is a Windows-only Dart + Flutter software that enables users to query the [Protein Data Bank (RCSB PDB)](https://www.rcsb.org/) through its [search](https://search.rcsb.org/) and [data](https://data.rcsb.org/) APIs and download the entry response data as a CSV file. The parser encompasses all of the PDB's main data types (minus one duplicate) to allow users to customise their search queries.
 
 ## Software Information | v1.2
-This software uses RCSB PDB's search API and its `full_text` query service. General search term(s), entry ID(s), or sequence are accepted, returning up to the first 10,000 results, sorted by score. Multiple search terms can be entered at once by separating terms with a comma.
+This software uses RCSB PDB's search API and its `full_text` query service. General search term(s), entry ID(s), or sequence are accepted, returning up to the first 10,000 results, sorted by score. Refer to RCSB's search API (linked above) for more information. Multiple search terms can be entered at once by separating terms with a comma.
 
 More software information can be found under the "Settings" tab after installation.
 
