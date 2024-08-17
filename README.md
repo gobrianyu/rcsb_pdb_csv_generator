@@ -18,6 +18,7 @@ Two options are available:
 #### 1. Installer
 
 - Download the installer `csv_generator_setup.exe` from the root of this repository.
+- Alternatively, find all relevant files under "Releases".
 - Run the installer and follow setup instructions.
 
 #### 2. Source Code
